@@ -6,6 +6,10 @@
 
 import type { BoardId } from '../data/types';
 import { ESP32_FREE_PROGRAMS } from './programsEsp32';
+import { BLUEPILL_FREE_PROGRAMS } from './programsBluepill';
+import { RPI4_FREE_PROGRAMS } from './programsRpi4';
+import { PICO_FREE_PROGRAMS } from './programsPico';
+import { NODEMCU_FREE_PROGRAMS } from './programsNodemcu';
 
 export type PinMode = 'INPUT' | 'INPUT_PULLUP' | 'OUTPUT';
 
@@ -357,6 +361,10 @@ export const FREE_PROGRAMS: ProgramDef[] = [P_BLINK_L, P_BLINK_D9, P_BUTTON, P_P
 /** 腳位和 Uno 不同的板子，自由建構用自己的範例程式（第 2 支是預設） */
 export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
   esp32: ESP32_FREE_PROGRAMS,
+  bluepill: BLUEPILL_FREE_PROGRAMS,
+  rpi4: RPI4_FREE_PROGRAMS,
+  pico: PICO_FREE_PROGRAMS,
+  nodemcu: NODEMCU_FREE_PROGRAMS,
 };
 export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 

@@ -149,14 +149,14 @@ export function makeEsp32Bottom(): THREE.CanvasTexture {
   c.height = H;
   const g = c.getContext('2d')!;
   base(g, 57);
-  // 底面左右對調，從下面看文字是正的
-  const px = (x: number) => W - x * S;
+  // Box 的 -Y 面：u 仍沿 +x、v 方向相反，所以畫布上方 = 板子前緣（mm y = 0），左右不用對調
+  const px = (x: number) => x * S;
   const py = (y: number) => y * S;
   pads(g, px, py);
 
   // USB 固定腳焊點
   g.fillStyle = '#d7dbe0';
-  for (const dy of [-3.6, 3.6]) g.fillRect(px(4.2) - 1.2 * S, py(ESP_MID_Y + dy) - 0.7 * S, 1.2 * S, 1.4 * S);
+  for (const dy of [-3.6, 3.6]) g.fillRect(px(3.0), py(ESP_MID_Y + dy) - 0.7 * S, 1.2 * S, 1.4 * S);
 
   const text = makeText(g, px, py);
   // 背面的腳位標籤寫上 GPIO 編號，對照程式比較方便
@@ -164,7 +164,8 @@ export function makeEsp32Bottom(): THREE.CanvasTexture {
     const [x, y] = pinMm(p);
     const far = y > ESP_MID_Y;
     const gpio = /^D\d+$/.test(p.id) ? p.id.slice(1) : p.label;
-    text(gpio, x, far ? y - 1.3 : y + 1.3, 0.95, { rot: -Math.PI / 2, align: far ? 'right' : 'left', weight: 600 });
+    // 背面的 y 沒有上下翻轉，文字方向和正面相反，所以對齊也要反過來，標籤才會朝板子內側長
+    text(gpio, x, far ? y - 1.3 : y + 1.3, 0.95, { rot: -Math.PI / 2, align: far ? 'left' : 'right', weight: 600 });
   }
   text('ESP32 DEVKIT V1', 30, ESP_MID_Y + 2.4, 2.3, { weight: 800, italic: true });
   text('ROBOT LAB · 3.3V LOGIC', 30, ESP_MID_Y - 1.6, 1.0, { weight: 600, color: 'rgba(246,247,249,.75)' });

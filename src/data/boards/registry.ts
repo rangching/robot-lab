@@ -3,6 +3,10 @@ import { BOARDS } from './index';
 import { UNO_PINS, UNO_INTERNAL_NETS, UNO_FOOTPRINTS, UNO_W, UNO_D, unoLesson, mx, mz } from './uno';
 import { megaData } from './mega';
 import { esp32Data } from './esp32';
+import { bluepillData } from './bluepill';
+import { rpi4Data } from './rpi4';
+import { picoData } from './pico';
+import { nodemcuData } from './nodemcu';
 import { NANO_PINS, NANO_INTERNAL_NETS, NANO_FOOTPRINTS, NANO_W, NANO_D, nanoLesson, nx, nz } from './nano';
 
 /** [相機 x, y, z, 目標 x, y, z] */
@@ -175,6 +179,10 @@ export const BOARD_DATA: Partial<Record<BoardId, BoardData>> = {
   nano: nanoData,
   mega: megaData,
   esp32: esp32Data,
+  bluepill: bluepillData,
+  rpi4: rpi4Data,
+  pico: picoData,
+  nodemcu: nodemcuData,
 };
 
 export const explodeGap = (b: BoardData) => b.stage.explodeGap ?? 0.9;

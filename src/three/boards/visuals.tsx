@@ -4,6 +4,10 @@ import { unoVisual } from './unoVisual';
 import { nanoVisual } from './nanoVisual';
 import { megaVisual } from './megaVisual';
 import { esp32Visual } from './esp32Visual';
+import { bluepillVisual } from './bluepillVisual';
+import { rpi4Visual } from './rpi4Visual';
+import { picoVisual } from './picoVisual';
+import { nodemcuVisual } from './nodemcuVisual';
 
 export type { BoardVisual, Lights } from './visualTypes';
 
@@ -12,6 +16,10 @@ export const BOARD_VISUALS: Partial<Record<BoardId, BoardVisual>> = {
   nano: nanoVisual,
   mega: megaVisual,
   esp32: esp32Visual,
+  bluepill: bluepillVisual,
+  rpi4: rpi4Visual,
+  pico: picoVisual,
+  nodemcu: nodemcuVisual,
 };
 
 export const boardVisual = (id: BoardId): BoardVisual => BOARD_VISUALS[id] ?? unoVisual;

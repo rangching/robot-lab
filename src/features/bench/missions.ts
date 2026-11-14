@@ -6,6 +6,10 @@ import type { Observed } from '../../sim/engine';
 import type { Comp, CompType, Issue, Wire } from '../../sim/types';
 import { MEGA_MISSIONS } from './missionsMega';
 import { ESP32_MISSIONS } from './missionsEsp32';
+import { BLUEPILL_MISSIONS } from './missionsBluepill';
+import { RPI4_MISSIONS } from './missionsRpi4';
+import { PICO_MISSIONS } from './missionsPico';
+import { NODEMCU_MISSIONS } from './missionsNodemcu';
 
 export interface Ctx {
   comps: Comp[];
@@ -176,6 +180,10 @@ export const MISSIONS_BY_BOARD: Partial<Record<BoardId, Mission[]>> = {
   nano: NANO_MISSIONS,
   mega: MEGA_MISSIONS,
   esp32: ESP32_MISSIONS,
+  bluepill: BLUEPILL_MISSIONS,
+  rpi4: RPI4_MISSIONS,
+  pico: PICO_MISSIONS,
+  nodemcu: NODEMCU_MISSIONS,
 };
 export const missionsFor = (b: BoardId): Mission[] => MISSIONS_BY_BOARD[b] ?? [];
 export const MISSIONS: Mission[] = Object.values(MISSIONS_BY_BOARD).flat() as Mission[];
