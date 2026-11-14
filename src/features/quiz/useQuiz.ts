@@ -1,16 +1,16 @@
-import { useCallback, useRef, useState } from 'react';
-import { unoLesson } from '../../data/boards/uno';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { BoardData } from '../../data/boards/registry';
 import type { QuizQ } from '../../data/types';
 import { judge, pickQuestions, quizXpGain, scoreOf, type QResult } from './quizLogic';
 import { sfx } from '../music/sfx';
-import { useProgress } from '../progress/store';
+import { boardProgress, bkey, useProgress } from '../progress/store';
 
 export const QUIZ_N = 6;
-const NAME = Object.fromEntries(unoLesson.parts.map((p) => [p.id, p.name]));
 
 export interface Feedback { kind: 'ok' | 'bad' | 'info'; text: string }
 
-export function useQuiz(flyTo: (id: string) => void) {
+export function useQuiz(flyTo: (id: string) => void, board: BoardData) {
+  const NAME = useMemo(() => Object.fromEntries(board.lesson.parts.map((p) => [p.id, p.name])), [board]);
   const [qs, setQs] = useState<QuizQ[]>([]);
   const [idx, setIdx] = useState(0);
   const [results, setResults] = useState<QResult[]>([]);
@@ -30,14 +30,14 @@ export function useQuiz(flyTo: (id: string) => void) {
 
   const start = useCallback(() => {
     clearTimers();
-    setQs(pickQuestions(unoLesson.quiz, QUIZ_N));
+    setQs(pickQuestions(board.lesson.quiz, QUIZ_N));
     setIdx(0);
     setResults([]);
     setFeedback(null);
     setFlash({});
     setDone(false);
     st.current = { firstTry: true, hintUsed: false, locked: false };
-  }, []);
+  }, [board]);
 
   const stop = useCallback(() => {
     clearTimers();
@@ -51,10 +51,11 @@ export function useQuiz(flyTo: (id: string) => void) {
     setDone(true);
     const score = scoreOf(res);
     const p = useProgress.getState();
-    const gain = quizXpGain(p.quizBest, score);
-    p.award('quiz-first-run', 20, '完成第一次找零件測驗');
-    if (gain > 0) p.award(`quiz-best-${score}`, gain, `測驗新紀錄 ${score}/${QUIZ_N}`);
-    p.setQuizBest(score);
+    const b = board.id;
+    const gain = quizXpGain(boardProgress(p, b).quizBest, score);
+    p.award(bkey(b, 'quiz-first-run'), 20, `完成第一次 ${board.short} 找零件測驗`);
+    if (gain > 0) p.award(bkey(b, `quiz-best-${score}`), gain, `${board.short} 測驗新紀錄 ${score}/${QUIZ_N}`);
+    p.setQuizBest(b, score);
     if (score === QUIZ_N) p.grantBadge('quiz-perfect');
   };
 

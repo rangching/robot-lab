@@ -1,24 +1,7 @@
 import * as THREE from 'three';
-import { UNO_PINS, UNO_W, UNO_D } from '../../data/boards/uno';
+import { UNO_PINS, UNO_W, UNO_D, UNO_FOOTPRINTS } from '../../data/boards/uno';
 
-/** 每個零件在板上的外框（mm：中心 x, y, 寬, 高），給絲印與組裝用 */
-export const FOOTPRINTS: Record<string, [number, number, number, number]> = {
-  mcu: [48, 14, 37, 9.4],
-  usb: [4, 38, 13, 12.4],
-  u2: [16, 30, 6.2, 6.2],
-  jack: [6, 7.7, 12, 9.4],
-  reg: [16.5, 8, 7.2, 6.4],
-  caps: [17, 12.5, 12, 11],
-  dig: [44, 50.8, 49, 3],
-  pwr: [32.99, 2.54, 21, 3],
-  ana: [53.34, 2.54, 16, 3],
-  ledL: [24, 44, 3, 2],
-  txrx: [24, 38.2, 3, 5],
-  on: [62, 38, 3, 2],
-  reset: [6, 50, 7, 7],
-  xtal: [14, 23, 12, 5.2],
-  icsp: [64.5, 27, 5.6, 8.2],
-};
+export const FOOTPRINTS = UNO_FOOTPRINTS;
 
 const W = 2048;
 const H = Math.round((W * UNO_D) / UNO_W);
@@ -161,8 +144,9 @@ export function makeBottomTexture(): THREE.CanvasTexture {
     g.lineTo(r() * W, r() * H);
     g.stroke();
   }
-  // 底面：Box 的 -Y 面 v 方向相反；畫布上方 = 板子前緣（mm y = 0），左右對調讓從底下看時文字是正的
-  const bx = (mmx: number) => W - mmx * S;
+  // 底面：Box 的 -Y 面 u 仍沿 +x、v 方向相反；畫布上方 = 板子前緣（mm y = 0）。
+  // 從下往上看時 +z 在畫面上方，所以文字照常畫就是正的，零件焊點也會對到正面的位置
+  const bx = (mmx: number) => mmx * S;
   const by = (mmy: number) => mmy * S;
   // 排母焊點
   for (const p of UNO_PINS) {

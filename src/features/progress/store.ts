@@ -3,6 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { levelOf } from './levels';
 import { BADGES } from './badges';
 import { sfx } from '../music/sfx';
+import type { BoardId } from '../../data/types';
 
 /** localStorage 在私密模式或被封鎖時會丟例外，全部包起來 */
 const safeStorage: StateStorage = {
@@ -25,14 +26,26 @@ export interface Settings {
   nudged: boolean;
 }
 
+/** 每塊板子各自的學習進度 */
+export interface BoardProgress {
+  lessonRead: string[];
+  quizBest: number;
+  assemblyDone: boolean;
+}
+
+export const EMPTY_BOARD: BoardProgress = { lessonRead: [], quizBest: 0, assemblyDone: false };
+
+/** 舊版（只有 Uno）留下的 XP 與徽章 key 沒有前綴；其他板子加上「板子:」前綴，避免重複領獎 */
+export const bkey = (board: BoardId, key: string) => (board === 'uno' ? key : `${board}:${key}`);
+
 export interface ProgressState {
   xp: number;
   awarded: Record<string, number>;
   badges: Record<string, string>;
   streak: { last: string; days: number };
-  lessonRead: string[];
-  quizBest: number;
-  assemblyDone: boolean;
+  /** 目前選的板子 */
+  board: BoardId;
+  boards: Partial<Record<BoardId, BoardProgress>>;
   missionSteps: Record<string, number>;
   missionsDone: string[];
   shorts: number;
@@ -40,9 +53,10 @@ export interface ProgressState {
   award: (key: string, xp: number, label: string) => void;
   grantBadge: (id: string) => void;
   touchStreak: () => void;
-  markLesson: (id: string) => void;
-  setQuizBest: (n: number) => void;
-  setAssemblyDone: () => void;
+  setBoard: (b: BoardId) => void;
+  markLesson: (board: BoardId, id: string) => void;
+  setQuizBest: (board: BoardId, n: number) => void;
+  setAssemblyDone: (board: BoardId) => void;
   setMissionStep: (mission: string, n: number) => void;
   completeMission: (mission: string) => void;
   addShort: () => void;
@@ -88,9 +102,8 @@ const initial = {
   awarded: {} as Record<string, number>,
   badges: {} as Record<string, string>,
   streak: { last: '', days: 0 },
-  lessonRead: [] as string[],
-  quizBest: 0,
-  assemblyDone: false,
+  board: 'uno' as BoardId,
+  boards: {} as Partial<Record<BoardId, BoardProgress>>,
   missionSteps: {} as Record<string, number>,
   missionsDone: [] as string[],
   shorts: 0,
@@ -135,12 +148,20 @@ export const useProgress = create<ProgressState>()(
           if (next >= 3) get().grantBadge('streak3');
           if (next >= 7) get().grantBadge('streak7');
         },
-        markLesson: (id) => {
-          if (get().lessonRead.includes(id)) return;
-          set((s) => ({ lessonRead: [...s.lessonRead, id] }));
+        setBoard: (board) => set({ board }),
+        markLesson: (b, id) => {
+          const cur = boardProgress(get(), b);
+          if (cur.lessonRead.includes(id)) return;
+          set((s) => ({ boards: { ...s.boards, [b]: { ...cur, lessonRead: [...cur.lessonRead, id] } } }));
         },
-        setQuizBest: (n) => set((s) => ({ quizBest: Math.max(s.quizBest, n) })),
-        setAssemblyDone: () => set({ assemblyDone: true }),
+        setQuizBest: (b, n) => {
+          const cur = boardProgress(get(), b);
+          set((s) => ({ boards: { ...s.boards, [b]: { ...cur, quizBest: Math.max(cur.quizBest, n) } } }));
+        },
+        setAssemblyDone: (b) => {
+          const cur = boardProgress(get(), b);
+          set((s) => ({ boards: { ...s.boards, [b]: { ...cur, assemblyDone: true } } }));
+        },
         setMissionStep: (m, n) => set((s) => ({ missionSteps: { ...s.missionSteps, [m]: Math.max(s.missionSteps[m] ?? 0, n) } })),
         completeMission: (m) => {
           if (get().missionsDone.includes(m)) return;
@@ -148,17 +169,42 @@ export const useProgress = create<ProgressState>()(
         },
         addShort: () => set((s) => ({ shorts: s.shorts + 1 })),
         setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
-        resetAll: () => set({ ...initial, settings: get().settings }),
+        resetAll: () => set({ ...initial, board: get().board, settings: get().settings }),
       };
     },
     {
       name: 'robot-lab-progress-v1',
+      version: 2,
       storage: createJSONStorage(() => safeStorage),
+      // v1 只有 Uno：把扁平的 lessonRead／quizBest／assemblyDone 搬進 boards.uno
+      migrate: (old, version) => {
+        const o = (old ?? {}) as Record<string, unknown>;
+        if (version < 2) {
+          const { lessonRead, quizBest, assemblyDone, ...rest } = o;
+          return {
+            ...rest,
+            board: 'uno',
+            boards: { uno: { lessonRead: (lessonRead as string[]) ?? [], quizBest: (quizBest as number) ?? 0, assemblyDone: !!assemblyDone } },
+          } as unknown as ProgressState;
+        }
+        return o as unknown as ProgressState;
+      },
       partialize: (s) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { award, grantBadge, touchStreak, markLesson, setQuizBest, setAssemblyDone, setMissionStep, completeMission, addShort, setSettings, resetAll, ...rest } = s;
+        const { award, grantBadge, touchStreak, setBoard, markLesson, setQuizBest, setAssemblyDone, setMissionStep, completeMission, addShort, setSettings, resetAll, ...rest } = s;
         return rest;
       },
     },
   ),
 );
+
+export function boardProgress(s: Pick<ProgressState, 'boards'>, b: BoardId): BoardProgress {
+  return s.boards[b] ?? EMPTY_BOARD;
+}
+
+/** 目前板子的進度（React hook） */
+export function useBoardProgress(): BoardProgress & { board: BoardId } {
+  const board = useProgress((s) => s.board);
+  const bp = useProgress((s) => s.boards[board]) ?? EMPTY_BOARD;
+  return { ...bp, board };
+}

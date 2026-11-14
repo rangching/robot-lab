@@ -8,7 +8,7 @@ export interface Comp {
   props: { color?: string; ohms?: number };
 }
 
-/** 端點格式：'uno:D9'、'c3:A' */
+/** 端點格式：'mcu:D9'（開發板）、'c3:A'（元件） */
 export type Endpoint = string;
 
 export interface Wire {

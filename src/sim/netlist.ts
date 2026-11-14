@@ -1,4 +1,4 @@
-import { UNO_PINS, UNO_INTERNAL_NETS } from '../data/boards/uno';
+import { MCU, simBoard, IO_PIN } from './board';
 import { CATALOG } from './catalog';
 import { ep, splitEp, type Comp, type Endpoint, type Wire } from './types';
 
@@ -23,9 +23,6 @@ class DSU {
   }
 }
 
-export const UNO_SUPPLY = ['uno:5V', 'uno:IOREF'];
-export const UNO_GND = ['uno:GND1', 'uno:GND2', 'uno:GND3'];
-
 export interface Nets {
   netOf: (e: Endpoint) => string;
   members: (net: string) => Endpoint[];
@@ -34,7 +31,7 @@ export interface Nets {
 }
 
 export function allEndpoints(comps: Comp[]): Endpoint[] {
-  const out: Endpoint[] = UNO_PINS.map((p) => ep('uno', p.id));
+  const out: Endpoint[] = simBoard().pins.map((p) => ep(MCU, p.id));
   for (const c of comps) for (const p of CATALOG[c.type].pins) out.push(ep(c.id, p.id));
   return out;
 }
@@ -44,7 +41,7 @@ export function buildNets(comps: Comp[], wires: Wire[], pressed: Set<string> = n
   const d = new DSU();
   const all = allEndpoints(comps);
   all.forEach((e) => d.find(e));
-  for (const group of UNO_INTERNAL_NETS) for (let i = 1; i < group.length; i++) d.union(ep('uno', group[0]), ep('uno', group[i]));
+  for (const group of simBoard().internalNets) for (let i = 1; i < group.length; i++) d.union(ep(MCU, group[0]), ep(MCU, group[i]));
   for (const w of wires) d.union(w.a, w.b);
   for (const c of comps) if (c.type === 'button' && pressed.has(c.id)) d.union(ep(c.id, '1'), ep(c.id, '2'));
   const groups = new Map<string, Endpoint[]>();
@@ -61,14 +58,14 @@ export function buildNets(comps: Comp[], wires: Wire[], pressed: Set<string> = n
   };
 }
 
-/** 端點屬於哪個元件；Uno 回傳 null */
+/** 端點屬於哪個元件；開發板回傳 null */
 export function compOf(e: Endpoint, comps: Comp[]): Comp | null {
   const [owner] = splitEp(e);
-  if (owner === 'uno') return null;
+  if (owner === MCU) return null;
   return comps.find((c) => c.id === owner) ?? null;
 }
 
-export function isUnoDigital(e: Endpoint) {
+export function isMcuIo(e: Endpoint) {
   const [o, p] = splitEp(e);
-  return o === 'uno' && /^(D\d+|A\d)$/.test(p);
+  return o === MCU && IO_PIN.test(p);
 }

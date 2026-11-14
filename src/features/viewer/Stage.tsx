@@ -3,12 +3,12 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { CameraControls, Html } from '@react-three/drei';
 import CameraControlsImpl from 'camera-controls';
 import * as THREE from 'three';
-import { UnoModel, pinTop } from '../../three/boards/UnoModel';
+import { BoardModel, pinTop } from '../../three/boards/BoardModel';
 import { SceneBase } from '../../three/SceneBase';
 import { DragController } from '../../three/DragController';
 import { DevExpose } from '../../three/DevExpose';
-import { FOOTPRINTS } from '../../three/boards/pcbTexture';
-import { unoLesson, mx, mz } from '../../data/boards/uno';
+import { explodeGap, type BoardData } from '../../data/boards/registry';
+import { useBoard } from '../../lib/useBoard';
 import { PIN_KIND_LABEL, type PinDef } from '../../data/types';
 import { useLab, scrollToId, type View } from '../../lib/labStore';
 import { useInView } from '../../lib/useInView';
@@ -19,14 +19,18 @@ import { useProgress } from '../progress/store';
 import { sfx } from '../music/sfx';
 import { starsOf } from '../quiz/quizLogic';
 
-const PART = Object.fromEntries(unoLesson.parts.map((p) => [p.id, p]));
-
-const VIEWS: Record<View, [number, number, number, number, number, number]> = {
-  iso: [5.4, 7.6, 9.0, 0, 0, 0.2],
-  top: [0, 13.5, 0.01, 0, 0, 0],
-  bottom: [0, -12.5, 0.6, 0, 0, 0],
-  front: [0, 2.8, 12, 0, 0.2, 0],
-};
+/** 回報鏡頭在板子上方還是下方（用來切換正面／背面零件的編號標籤） */
+function CamSide({ onChange }: { onChange: (below: boolean) => void }) {
+  const last = useRef<boolean | null>(null);
+  useFrame(({ camera }) => {
+    const below = camera.position.y < -0.3;
+    if (below !== last.current) {
+      last.current = below;
+      onChange(below);
+    }
+  });
+  return null;
+}
 
 function AutoRotate({ ctl, on }: { ctl: React.RefObject<CameraControlsImpl>; on: boolean }) {
   useFrame((_, dt) => {
@@ -64,9 +68,10 @@ function SolderFlash({ at, t }: { at: [number, number, number]; t: number }) {
   );
 }
 
-function TargetGhost({ id }: { id: string }) {
+function TargetGhost({ id, board }: { id: string; board: BoardData }) {
   const m = useRef<THREE.Mesh>(null!);
-  const fp = FOOTPRINTS[id];
+  const fp = board.footprints[id];
+  const { mx, mz } = board;
   useFrame((s) => {
     (m.current.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.2 * Math.sin(s.clock.elapsedTime * 7);
   });
@@ -78,16 +83,16 @@ function TargetGhost({ id }: { id: string }) {
   );
 }
 
-function applyCamera(c: CameraControlsImpl | null, mode: string, smooth: boolean) {
+function applyCamera(c: CameraControlsImpl | null, mode: string, smooth: boolean, board: BoardData) {
   if (!c) return;
   const A = CameraControlsImpl.ACTION;
   if (mode === 'assembly') {
-    void c.setLookAt(2.4, 18.5, 6.6, 2.4, 0, -0.2, smooth);
+    void c.setLookAt(...board.stage.asmCam, smooth);
     c.mouseButtons.left = A.NONE;
     c.mouseButtons.right = A.ROTATE;
     c.touches.one = A.NONE;
   } else {
-    void c.setLookAt(...VIEWS.iso, smooth);
+    void c.setLookAt(...board.stage.views.iso, smooth);
     c.mouseButtons.left = A.ROTATE;
     c.mouseButtons.right = A.TRUCK;
     c.touches.one = A.TOUCH_ROTATE;
@@ -109,18 +114,27 @@ export function Stage() {
   const ctl = useRef<CameraControlsImpl>(null);
   const [hoverPin, setHoverPin] = useState<PinDef | null>(null);
   const blink = useBlink(1000);
-  const quizBest = useProgress((s) => s.quizBest);
+  const board = useBoard();
+  const quizBest = useProgress((s) => s.boards[board.id]?.quizBest ?? 0);
+  const PART = useMemo(() => Object.fromEntries(board.lesson.parts.map((p) => [p.id, p])), [board]);
+  const nParts = board.lesson.parts.length;
+  const [below, setBelow] = useState(false);
+  const boardRef = useRef(board);
+  boardRef.current = board;
 
   const flyTo = useCallback((id: string) => {
-    const p = PART[id];
+    const p = boardRef.current.lesson.parts.find((x) => x.id === id);
     const c = ctl.current;
     if (!p || !c) return;
-    const y = useLab.getState().explode * p.layer * 0.9 + p.at[1];
-    void c.setLookAt(p.at[0] + 1.6, y + 3.4, p.at[2] + 3.8, p.at[0], y, p.at[2], true);
+    const ex = useLab.getState().explode;
+    const y = ex * p.layer * explodeGap(boardRef.current) + p.at[1] + ex * boardRef.current.stage.explodeLift;
+    // 背面零件從下方看
+    if (p.side === 'bottom' || p.at[1] < -0.2) void c.setLookAt(p.at[0] + 1.2, y - 3.0, p.at[2] + 3.0, p.at[0], y, p.at[2], true);
+    else void c.setLookAt(p.at[0] + 1.6, y + 3.4, p.at[2] + 3.8, p.at[0], y, p.at[2], true);
   }, []);
 
-  const quiz = useQuiz(flyTo);
-  const asm = useAssembly();
+  const quiz = useQuiz(flyTo, board);
+  const asm = useAssembly(board);
   // 組裝完成後先讓使用者看 ON 燈亮起，再顯示結算卡
   const [asmCard, setAsmCard] = useState(false);
   useEffect(() => {
@@ -131,9 +145,30 @@ export function Stage() {
 
   // 視角切換
   useEffect(() => {
-    const v = VIEWS[view];
+    const v = boardRef.current.stage.views[view];
     void ctl.current?.setLookAt(...v, true);
   }, [view, viewNonce]);
+
+  // 換板子：停掉測驗與組裝、鏡頭回到立體視角
+  const firstBoard = useRef(true);
+  useEffect(() => {
+    if (firstBoard.current) { firstBoard.current = false; return; }
+    quiz.stop();
+    asm.stop();
+    applyCamera(ctl.current, useLab.getState().mode, true, board);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.id]);
+
+  // 會往上抬的板子（背面有零件）：拆開時鏡頭往上移、往後拉，讓上下兩端的零件都在畫面裡
+  useEffect(() => {
+    const b = boardRef.current;
+    const c = ctl.current;
+    if (!c || mode !== 'explore' || !b.stage.explodeLift || useLab.getState().selected) return;
+    const [px, py, pz, tx, ty, tz] = b.stage.views.iso;
+    const up = explode * (b.stage.explodeLift + explodeGap(b) * 1.4);
+    const k = 1 + explode * 0.35;
+    void c.setLookAt(tx + (px - tx) * k, ty + up + (py - ty) * k, tz + (pz - tz) * k, tx, ty + up, tz, true);
+  }, [explode, mode]);
 
   // 選取零件 → 鏡頭飛過去
   useEffect(() => {
@@ -152,7 +187,7 @@ export function Stage() {
       quiz.stop();
       asm.stop();
     }
-    applyCamera(ctl.current, mode, true);
+    applyCamera(ctl.current, mode, true, boardRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
@@ -160,7 +195,8 @@ export function Stage() {
   const setCtl = useCallback((c: CameraControlsImpl | null) => {
     const prev = ctl.current;
     (ctl as React.MutableRefObject<CameraControlsImpl | null>).current = c;
-    if (c && c !== prev) applyCamera(c, useLab.getState().mode, false);
+    if (import.meta.env.DEV) Object.assign(window, { __stageCtl: c });
+    if (c && c !== prev) applyCamera(c, useLab.getState().mode, false, boardRef.current);
   }, []);
 
   const onExplorePart = (id: string) => {
@@ -216,34 +252,39 @@ export function Stage() {
       </div>
 
       <div style={{ position: 'absolute', inset: 0 }}>
-        <Canvas shadows dpr={[1, 2]} camera={{ position: [5.4, 7.6, 9.0], fov: 35 }} frameloop={inView ? 'always' : 'never'} gl={{ antialias: true, alpha: true }} onPointerMissed={() => mode === 'explore' && select(null)}>
+        <Canvas shadows dpr={[1, 2]} camera={{ position: board.stage.views.iso.slice(0, 3) as [number, number, number], fov: 35 }} frameloop={inView ? 'always' : 'never'} gl={{ antialias: true, alpha: true }} onPointerMissed={() => mode === 'explore' && select(null)}>
           <Suspense fallback={null}>
-            <SceneBase floorY={-0.17} />
+            <SceneBase floorY={board.stage.floorY} />
+            <CamSide onChange={setBelow} />
             <DevExpose name="__stageProject" />
             <CameraControls ref={setCtl} makeDefault minDistance={2.5} maxDistance={20} dollyToCursor smoothTime={0.35} />
             <AutoRotate ctl={ctl} on={rotate && mode === 'explore'} />
-            <UnoModel lights={lights} {...modelProps} />
+            <group position={[0, mode === 'explore' ? explode * board.stage.explodeLift : 0, 0]}>
+            <BoardModel key={board.id} board={board.id} lights={lights} {...modelProps} />
 
             {mode === 'explore' && labels &&
-              unoLesson.parts.map((p) => (
-                <Html key={p.id} position={[p.at[0], p.at[1] * 2 + 0.3 + explode * p.layer * 0.9, p.at[2]]} zIndexRange={[1, 0]} center>
-                  <div className="part-tag" onClick={() => onExplorePart(p.id)} title={p.name}>{p.num}</div>
-                </Html>
-              ))}
+              board.lesson.parts
+                .filter((p) => explode > 0.3 || (p.side === 'bottom') === below)
+                .map((p) => (
+                  <Html key={`${board.id}:${p.id}`} position={[p.at[0], (p.at[1] < 0 ? p.at[1] * 2 - 0.3 : p.at[1] * 2 + 0.3) + explode * p.layer * explodeGap(board), p.at[2]]} zIndexRange={[1, 0]} center>
+                    <div className={`part-tag ${p.side === 'bottom' ? 'under' : ''}`} onClick={() => onExplorePart(p.id)} title={p.name}>{p.num}</div>
+                  </Html>
+                ))}
 
             {mode === 'explore' && hoverPin && (
-              <Html position={pinTop(hoverPin)} zIndexRange={[1, 0]}>
+              <Html position={pinTop(hoverPin, board.stage.pinY)} zIndexRange={[1, 0]}>
                 <div className="pin-tip">
                   <b>{hoverPin.label}</b> · {PIN_KIND_LABEL[hoverPin.kind]}
                   <span>{hoverPin.desc}</span>
                 </div>
               </Html>
             )}
+            </group>
 
             {mode === 'assembly' && (
               <>
                 <DragController active={!!asm.drag} onMove={asm.onDragMove} onEnd={asm.onDragEnd} />
-                {asm.drag && asm.failed[asm.drag.id] && <TargetGhost id={asm.drag.id} />}
+                {asm.drag && asm.failed[asm.drag.id] && <TargetGhost id={asm.drag.id} board={board} />}
                 {asm.sparks && <SolderFlash key={asm.sparks.t} at={PART[asm.sparks.id].at} t={asm.sparks.t} />}
               </>
             )}
@@ -255,16 +296,16 @@ export function Stage() {
       {mode === 'explore' && sel && (
         <div className="panel stage-side" role="dialog" aria-label={sel.name}>
           <button className="btn sm icon ghost close" onClick={() => select(null)} aria-label="關閉"><IconX size={14} /></button>
-          <span className="kicker">零件 {String(sel.num).padStart(2, '0')} / 15</span>
+          <span className="kicker">零件 {String(sel.num).padStart(2, '0')} / {nParts}{sel.side === 'bottom' ? ' · 背面' : ''}</span>
           <h4>{sel.name}</h4>
           <p>{sel.desc}</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="btn sm" onClick={() => { const i = sel.num % 15; select(unoLesson.parts[i].id); }}>下一個零件</button>
+            <button className="btn sm" onClick={() => { const i = sel.num % nParts; select(board.lesson.parts[i].id); }}>下一個零件</button>
             <button className="btn sm ghost" onClick={() => scrollToId('lesson')}>看課程</button>
           </div>
         </div>
       )}
-      {mode === 'explore' && !sel && <div className="stage-hint">拖曳旋轉 · 滾輪縮放 · 點零件看說明 · 滑到排母上看腳位</div>}
+      {mode === 'explore' && !sel && <div className="stage-hint">拖曳旋轉 · 滾輪縮放 · 點零件看說明 · 滑到{board.header ?? '排母'}上看腳位{board.lesson.parts.some((p) => p.side === 'bottom') ? ' · 按「背面」看背後的零件' : ''}</div>}
 
       {/* 測驗 */}
       {mode === 'quiz' && quiz.active && !quiz.done && quiz.q && (
@@ -325,7 +366,7 @@ export function Stage() {
           <div className="panel">
             <span className="kicker">組裝完成</span>
             <h3 style={{ fontSize: 26, margin: '8px 0' }}>板子復活了！</h3>
-            <p className="muted" style={{ margin: '0 0 16px' }}>15 個零件全部歸位，用時 {asm.done.secs} 秒。ON 燈亮起，L 燈也開始閃了。</p>
+            <p className="muted" style={{ margin: '0 0 16px' }}>{asm.counts.total} 個零件全部歸位，用時 {asm.done.secs} 秒。電源燈亮起，L 燈也開始閃了。</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button className="btn primary" onClick={asm.start}><IconReset size={14} /> 再組一次</button>
               <button className="btn" onClick={() => setMode('explore')}>回到 3D 檢視</button>

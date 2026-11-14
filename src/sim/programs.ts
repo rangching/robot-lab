@@ -4,6 +4,9 @@
  * {{key}} 是可以在畫面上修改的參數。
  */
 
+import type { BoardId } from '../data/types';
+import { ESP32_FREE_PROGRAMS } from './programsEsp32';
+
 export type PinMode = 'INPUT' | 'INPUT_PULLUP' | 'OUTPUT';
 
 export interface IO {
@@ -182,6 +185,42 @@ void loop() {
   },
 };
 
+export const P_POT_A7: ProgramDef = {
+  id: 'pot-a7',
+  title: '可變電阻調亮度（A7 → D3 PWM）',
+  outputs: ['D3'],
+  code: `const int LED = 3;          // D3 是 PWM 腳
+
+void setup() {
+  pinMode(LED, OUTPUT); ⟦s1⟧
+  Serial.begin(9600); ⟦s2⟧
+}
+
+void loop() {
+  int val = analogRead(A7);                // A7：Nano 的純類比腳 ⟦r⟧
+  int bright = map(val, 0, 1023, 0, 255);  // 換成 PWM 範圍 ⟦m⟧
+  analogWrite(LED, bright);                // 亮度 0–255 ⟦w⟧
+  Serial.println(val); ⟦p⟧
+  delay(100); ⟦d⟧
+}`,
+  *run(io) {
+    io.pinMode('D3', 'OUTPUT');
+    yield { at: 's1' };
+    yield { at: 's2' };
+    for (;;) {
+      const val = io.analogRead('A7');
+      yield { at: 'r', wait: 4 };
+      const b = mapRange(val, 0, 1023, 0, 255);
+      yield { at: 'm', wait: 4 };
+      io.analogWrite('D3', b);
+      yield { at: 'w', wait: 4 };
+      io.print(String(val));
+      yield { at: 'p', wait: 4 };
+      yield { at: 'd', wait: 100 };
+    }
+  },
+};
+
 export const P_SERVO: ProgramDef = {
   id: 'servo',
   title: '伺服機來回擺動（D9）',
@@ -314,6 +353,12 @@ void loop() {
 };
 
 export const FREE_PROGRAMS: ProgramDef[] = [P_BLINK_L, P_BLINK_D9, P_BUTTON, P_POT, P_SERVO, P_SONAR, P_MELODY];
+
+/** 腳位和 Uno 不同的板子，自由建構用自己的範例程式（第 2 支是預設） */
+export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
+  esp32: ESP32_FREE_PROGRAMS,
+};
+export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 
 /** 把程式碼拆成行：移除 ⟦tag⟧，記下 tag 所在行號 */
 export function parseCode(code: string) {

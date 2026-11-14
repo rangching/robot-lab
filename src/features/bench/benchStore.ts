@@ -1,22 +1,26 @@
 import { create } from 'zustand';
 import { CATALOG } from '../../sim/catalog';
 import { checkCircuit, hasError } from '../../sim/rules';
-import { defaultParams, FREE_PROGRAMS, type ProgramDef } from '../../sim/programs';
+import { defaultParams, FREE_PROGRAMS, freePrograms, type ProgramDef } from '../../sim/programs';
 import { splitEp, type Comp, type CompType, type Endpoint, type Issue, type Wire } from '../../sim/types';
-import { MISSION_MAP } from './missions';
+import { MISSION_MAP, missionsFor } from './missions';
+import { MCU, simBoard } from '../../sim/board';
+import type { BoardId } from '../../data/types';
 import { sfx } from '../music/sfx';
 import { useProgress } from '../progress/store';
 
-/** Uno 在工作台上的位置 */
-export const UNO_POS: [number, number, number] = [-4.2, 0, -0.6];
-const UNO_BOX = { x0: UNO_POS[0] - 3.7, x1: UNO_POS[0] + 3.7, z0: UNO_POS[2] - 3.0, z1: UNO_POS[2] + 3.0 };
+/** 開發板在工作台上佔的範圍（依目前的板子） */
+function boardBox() {
+  const { pos, half } = simBoard().bench;
+  return { x0: pos[0] - half[0], x1: pos[0] + half[0], z0: pos[2] - half[1], z1: pos[2] + half[1] };
+}
 
 export const WIRE_COLORS = ['auto', '#0ea5e9', '#f59e0b', '#22c55e', '#f97316', '#8b5cf6', '#1e293b'];
 
 function autoColor(a: Endpoint, b: Endpoint, comps: Comp[]) {
   const pins = [a, b].map((e) => splitEp(e));
-  const isGnd = pins.some(([o, p]) => (o === 'uno' && p.startsWith('GND')) || (p === 'N' && comps.find((c) => c.id === o)?.type === 'psu') || p === 'GND' || p === 'K');
-  const isPwr = pins.some(([o, p]) => (o === 'uno' && (p === '5V' || p === '3V3' || p === 'VIN')) || (p === 'P' && comps.find((c) => c.id === o)?.type === 'psu') || p === 'V' || p === 'VCC');
+  const isGnd = pins.some(([o, p]) => (o === MCU && p.startsWith('GND')) || (p === 'N' && comps.find((c) => c.id === o)?.type === 'psu') || p === 'GND' || p === 'K');
+  const isPwr = pins.some(([o, p]) => (o === MCU && (p === '5V' || p === '3V3' || p === 'VIN')) || (p === 'P' && comps.find((c) => c.id === o)?.type === 'psu') || p === 'V' || p === 'VCC');
   if (isGnd && !isPwr) return '#334155';
   if (isPwr && !isGnd) return '#ef4444';
   return '#f59e0b';
@@ -24,7 +28,8 @@ function autoColor(a: Endpoint, b: Endpoint, comps: Comp[]) {
 
 function overlaps(x: number, z: number, w: number, d: number, comps: Comp[], skip?: string) {
   const m = 0.35;
-  if (x + w / 2 > UNO_BOX.x0 - m && x - w / 2 < UNO_BOX.x1 + m && z + d / 2 > UNO_BOX.z0 - m && z - d / 2 < UNO_BOX.z1 + m) return true;
+  const BOX = boardBox();
+  if (x + w / 2 > BOX.x0 - m && x - w / 2 < BOX.x1 + m && z + d / 2 > BOX.z0 - m && z - d / 2 < BOX.z1 + m) return true;
   return comps.some((c) => {
     if (c.id === skip) return false;
     const s = CATALOG[c.type];
@@ -32,7 +37,7 @@ function overlaps(x: number, z: number, w: number, d: number, comps: Comp[], ski
   });
 }
 
-/** 找最靠近 Uno 右側的空位 */
+/** 找最靠近開發板右側的空位 */
 export function freeSpot(type: CompType, comps: Comp[]): [number, number] {
   const s = CATALOG[type];
   const cands: [number, number, number][] = [];
@@ -42,9 +47,10 @@ export function freeSpot(type: CompType, comps: Comp[]): [number, number] {
   return [4, 5];
 }
 
-export type MissionId = 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | 'm6' | 'free';
+export type MissionId = string;
 
 interface BenchState {
+  board: BoardId;
   missionId: MissionId;
   comps: Comp[];
   wires: Wire[];
@@ -65,6 +71,8 @@ interface BenchState {
   nid: number;
   program: () => ProgramDef;
   loadMission: (id: MissionId) => void;
+  /** 換板子：清空工作台並載入這塊板子的第一個任務 */
+  setBoard: (b: BoardId) => void;
   addComp: (type: CompType, props?: Comp['props']) => void;
   moveComp: (id: string, x: number, z: number) => void;
   removeComp: (id: string) => void;
@@ -87,6 +95,7 @@ interface BenchState {
 }
 
 export const useBench = create<BenchState>((set, get) => ({
+  board: 'uno',
   missionId: 'm1',
   comps: [],
   wires: [],
@@ -108,14 +117,22 @@ export const useBench = create<BenchState>((set, get) => ({
 
   program: () => {
     const { missionId, freeProgramId } = get();
-    if (missionId === 'free') return FREE_PROGRAMS.find((p) => p.id === freeProgramId) ?? FREE_PROGRAMS[0];
+    const list = freePrograms(get().board);
+    if (missionId === 'free') return list.find((p) => p.id === freeProgramId) ?? list[0];
     return MISSION_MAP[missionId].program;
+  },
+
+  setBoard: (b) => {
+    set({ board: b, comps: [], wires: [], freeProgramId: freePrograms(b)[1].id });
+    get().loadMission(missionsFor(b)[0]?.id ?? 'free');
   },
 
   loadMission: (id) => {
     const m = id === 'free' ? null : MISSION_MAP[id];
+    if (id !== 'free' && !m) return;
     const preset = m?.preset;
-    const prog = m ? m.program : FREE_PROGRAMS.find((p) => p.id === get().freeProgramId) ?? FREE_PROGRAMS[0];
+    const list = freePrograms(get().board);
+    const prog = m ? m.program : list.find((p) => p.id === get().freeProgramId) ?? list[0];
     set({
       missionId: id,
       comps: preset ? preset.comps.map((c) => ({ ...c, props: { ...c.props } })) : id === 'free' ? get().comps : [],
@@ -191,7 +208,8 @@ export const useBench = create<BenchState>((set, get) => ({
   setWireColor: (wireColor) => set({ wireColor }),
   setParam: (k, v) => set((s) => ({ params: { ...s.params, [k]: v } })),
   setFreeProgram: (id) => {
-    const p = FREE_PROGRAMS.find((x) => x.id === id) ?? FREE_PROGRAMS[0];
+    const list = freePrograms(get().board);
+    const p = list.find((x) => x.id === id) ?? list[0];
     set({ freeProgramId: id, params: defaultParams(p), running: false, issues: [] });
   },
 

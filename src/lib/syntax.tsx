@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react';
 
-const KW = new Set(['void', 'int', 'long', 'float', 'const', 'for', 'if', 'else', 'while', 'return', 'bool', 'true', 'false', 'from', 'import', 'def', 'class']);
-const FN = /^(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|delayMicroseconds|millis|Serial|println|print|begin|map|tone|noTone|pulseIn|attach|write|setup|loop)$/;
+const KW = new Set(['void', 'int', 'long', 'float', 'const', 'for', 'if', 'else', 'while', 'return', 'bool', 'true', 'false', 'from', 'import', 'def', 'class',
+  // MicroPython
+  'True', 'False', 'None', 'in', 'and', 'or', 'not', 'elif', 'as', 'pass', 'break']);
+const FN = /^(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|delayMicroseconds|millis|Serial|println|print|begin|map|tone|noTone|pulseIn|attach|write|setup|loop|Pin|PWM|ADC|sleep|sleep_ms|sleep_us|ticks_ms|value|toggle|read_u16|duty_u16|freq|time_pulse_us|range|round|int)$/;
 const CONST = /^(HIGH|LOW|OUTPUT|INPUT|INPUT_PULLUP|LED_BUILTIN|A\d)$/;
 
 /** 很小的 C++ 語法上色：註解、字串、數字、關鍵字、函式 */
 export function highlight(line: string, keyBase = 0): ReactNode[] {
   const out: ReactNode[] = [];
-  const ci = line.indexOf('//');
+  // C++ 的 // 註解，或 MicroPython 的 # 註解（#include 不算）
+  const sl = line.indexOf('//');
+  const ci = sl >= 0 ? sl : line.search(/#(?!include)/);
   const code = ci >= 0 ? line.slice(0, ci) : line;
   const comment = ci >= 0 ? line.slice(ci) : '';
   const re = /("[^"]*"|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*|#include|<[\w.]+>)/g;

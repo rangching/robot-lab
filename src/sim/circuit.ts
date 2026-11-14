@@ -1,4 +1,5 @@
-import { buildNets, UNO_GND, UNO_SUPPLY, type Nets } from './netlist';
+import { buildNets, type Nets } from './netlist';
+import { MCU, gndEps, supplyEps, IO_PIN, mcuEp, simBoard } from './board';
 import { ep, splitEp, type Comp, type Endpoint, type Wire } from './types';
 import type { PinMode } from './programs';
 
@@ -33,12 +34,15 @@ export class Circuit {
   private directLevel(nets: Nets, e: Endpoint, outs: Record<string, PinOut>): number | null {
     let gnd = false;
     let v: number | null = null;
+    const G = gndEps();
+    const S = supplyEps();
     for (const m of nets.members(nets.netOf(e))) {
       const [o, p] = splitEp(m);
-      if (o === 'uno') {
-        if (UNO_GND.includes(m)) gnd = true;
-        else if (UNO_SUPPLY.includes(m) || p === 'VIN') v = 1;
-        else if (p === '3V3') v = Math.max(v ?? 0, 0.66);
+      if (o === MCU) {
+        if (G.includes(m)) gnd = true;
+        else if (S.includes(m) || p === 'VIN') v = 1;
+        // 0–1 代表 0 到「板子的邏輯電壓」：5 V 板子的 3V3 約 0.66，3.3 V 板子的 3V3 就是滿格
+        else if (p === '3V3') v = Math.max(v ?? 0, simBoard().logicV === 3.3 ? 1 : 0.66);
         else if (outs[p]?.mode === 'OUTPUT') v = Math.max(v ?? 0, outs[p].level);
       } else if (this.typeOf(o) === 'psu') {
         if (p === 'N') gnd = true;
@@ -88,13 +92,15 @@ export class Circuit {
   }
 
   digitalRead(pin: string, outs: Record<string, PinOut>, inp: SimInputs): 0 | 1 {
-    const v = this.level(ep('uno', pin), outs, inp);
-    if (v === null) return outs[pin]?.mode === 'INPUT_PULLUP' ? 1 : Math.random() > 0.5 ? 1 : 0;
+    const v = this.level(mcuEp(pin), outs, inp);
+    // 沒有內建上拉的腳（ESP32 的 GPIO34–39）設 INPUT_PULLUP 也沒用，浮接時一樣亂跳
+    const pullup = outs[pin]?.mode === 'INPUT_PULLUP' && !(simBoard().inputOnly ?? []).includes(pin);
+    if (v === null) return pullup ? 1 : Math.random() > 0.5 ? 1 : 0;
     return v > 0.5 ? 1 : 0;
   }
 
   analogRead(pin: string, outs: Record<string, PinOut>, inp: SimInputs): number {
-    const v = this.level(ep('uno', pin), outs, inp);
+    const v = this.level(mcuEp(pin), outs, inp);
     if (v === null) return Math.round(300 + Math.random() * 400);
     return Math.max(0, Math.min(1023, Math.round(v * 1023)));
   }
@@ -109,22 +115,23 @@ export class Circuit {
     return diff * dim;
   }
 
-  /** 電源腳是否有 5 V、GND 是否和 Uno 共地 */
+  /** 電源腳是否有 5 V、GND 是否和開發板共地 */
   powered(c: Comp, vPin: string, gPin: string, outs: Record<string, PinOut>, inp: SimInputs) {
     const nets = this.nets(inp.pressed);
     const v = this.level(ep(c.id, vPin), outs, inp);
     const gEp = ep(c.id, gPin);
     const g = this.level(gEp, outs, inp);
-    const common = nets.members(nets.netOf(gEp)).some((m) => UNO_GND.includes(m));
+    const G = gndEps();
+    const common = nets.members(nets.netOf(gEp)).some((m) => G.includes(m));
     return { ok: v !== null && v >= 0.9 && g === 0, common };
   }
 
-  /** 某個元件端點所連到的 Uno 腳位 */
-  unoPinOf(e: Endpoint, inp: SimInputs): string | null {
+  /** 某個元件端點所連到的開發板腳位 */
+  mcuPinOf(e: Endpoint, inp: SimInputs): string | null {
     const nets = this.nets(inp.pressed);
     for (const m of nets.members(nets.netOf(e))) {
       const [o, p] = splitEp(m);
-      if (o === 'uno' && /^(D\d+|A\d)$/.test(p)) return p;
+      if (o === MCU && IO_PIN.test(p)) return p;
     }
     return null;
   }

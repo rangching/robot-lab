@@ -1,6 +1,7 @@
 import { Circuit, type PinOut, type SimInputs } from './circuit';
 import { ep, type Comp, type Wire } from './types';
 import type { Gen, IO, ProgramDef, PinMode } from './programs';
+import { simBoard } from './board';
 
 export interface Observed {
   runMs: number;
@@ -92,7 +93,7 @@ export class Engine {
         const val = self.circuit.analogRead(pin, self.outs, inp);
         // 記錄使用者轉動的範圍
         for (const c of self.comps) {
-          if (c.type === 'pot' && self.circuit.unoPinOf(ep(c.id, 'W'), inp) === pin) {
+          if (c.type === 'pot' && self.circuit.mcuPinOf(ep(c.id, 'W'), inp) === pin) {
             const p = inp.pot[c.id] ?? 0.5;
             self.obs.potMin = Math.min(self.obs.potMin, p);
             self.obs.potMax = Math.max(self.obs.potMax, p);
@@ -110,8 +111,8 @@ export class Engine {
         const inp = self.inputs();
         for (const c of self.comps) {
           if (c.type !== 'hcsr04') continue;
-          if (self.circuit.unoPinOf(ep(c.id, 'ECHO'), inp) !== pin) continue;
-          if (self.circuit.unoPinOf(ep(c.id, 'TRIG'), inp) !== trig) continue;
+          if (self.circuit.mcuPinOf(ep(c.id, 'ECHO'), inp) !== pin) continue;
+          if (self.circuit.mcuPinOf(ep(c.id, 'TRIG'), inp) !== trig) continue;
           const pw = self.circuit.powered(c, 'VCC', 'GND', self.outs, inp);
           if (!pw.ok || !pw.common) continue;
           simVisual.sonar[c.id] = performance.now();
@@ -162,8 +163,10 @@ export class Engine {
 
   private updateVisual(dt: number) {
     const inp = this.inputs();
-    const d13 = this.outs.D13;
-    const L = d13?.mode === 'OUTPUT' ? d13.level : 0;
+    // 板上 LED：Uno／Nano／Mega 在 D13，ESP32 在 D2
+    const led = this.outs[simBoard().ledPin ?? 'D13'];
+    // Blue Pill 的 PC13 LED 接在 3.3 V 和腳位之間，腳位輸出 LOW 才亮
+    const L = led?.mode === 'OUTPUT' ? (simBoard().ledActiveLow ? 1 - led.level : led.level) : 0;
     if (L > 0.5 && this.prevL <= 0.5) this.obs.blinksL++;
     this.prevL = L;
     simVisual.L = L;
@@ -180,7 +183,7 @@ export class Engine {
         this.obs.ledMin = Math.min(this.obs.ledMin, b);
         this.obs.ledMax = Math.max(this.obs.ledMax, b);
       } else if (c.type === 'servo') {
-        const pin = this.circuit.unoPinOf(ep(c.id, 'SIG'), inp);
+        const pin = this.circuit.mcuPinOf(ep(c.id, 'SIG'), inp);
         const pw = this.circuit.powered(c, 'V', 'GND', this.outs, inp);
         const target = pin != null ? this.servoTarget[pin] : undefined;
         const cur = this.servoAngle[c.id] ?? 90;
@@ -202,7 +205,7 @@ export class Engine {
           this.obs.servoMax = Math.max(this.obs.servoMax, next);
         }
       } else if (c.type === 'buzzer') {
-        const pin = this.circuit.unoPinOf(ep(c.id, 'P'), inp);
+        const pin = this.circuit.mcuPinOf(ep(c.id, 'P'), inp);
         const g = this.circuit.level(ep(c.id, 'N'), this.outs, inp);
         const f = pin && g === 0 ? this.tones[pin] ?? 0 : 0;
         if ((simVisual.buzz[c.id] ?? 0) !== f) this.hooks.tone(f);

@@ -77,6 +77,25 @@ export const UNO_PINS: PinDef[] = [
   ),
 ];
 
+/** 每個零件在板上的外框（mm：中心 x, y, 寬, 高），給絲印與組裝用 */
+export const UNO_FOOTPRINTS: Record<string, [number, number, number, number]> = {
+  mcu: [48, 14, 37, 9.4],
+  usb: [4, 38, 13, 12.4],
+  u2: [16, 30, 6.2, 6.2],
+  jack: [6, 7.7, 12, 9.4],
+  reg: [16.5, 8, 7.2, 6.4],
+  caps: [17, 12.5, 12, 11],
+  dig: [44, 50.8, 49, 3],
+  pwr: [32.99, 2.54, 21, 3],
+  ana: [53.34, 2.54, 16, 3],
+  ledL: [24, 44, 3, 2],
+  txrx: [24, 38.2, 3, 5],
+  on: [62, 38, 3, 2],
+  reset: [6, 50, 7, 7],
+  xtal: [14, 23, 12, 5.2],
+  icsp: [64.5, 27, 5.6, 8.2],
+};
+
 export const UNO_PIN_MAP: Record<string, PinDef> = Object.fromEntries(UNO_PINS.map((p) => [p.id, p]));
 
 /** 板內本來就相通的腳位（電氣上同一個節點） */

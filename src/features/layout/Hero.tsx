@@ -2,9 +2,10 @@ import { Stage } from '../viewer/Stage';
 import { BOARDS } from '../../data/boards';
 import { useProgress, useUi } from '../progress/store';
 import { completion, nextAction } from '../progress/completion';
-import { go } from './nav';
+import { go, switchBoard } from './nav';
+import { useBoard } from '../../lib/useBoard';
+import { isPlayable } from '../../data/boards/registry';
 import { IconLock, IconChevron } from '../../lib/icons';
-import { scrollToId } from '../../lib/labStore';
 
 function Ring({ pct }: { pct: number }) {
   const r = 36;
@@ -25,19 +26,21 @@ function Ring({ pct }: { pct: number }) {
 
 export function Hero() {
   const p = useProgress();
-  const comp = completion(p);
-  const next = nextAction(p);
-  const uno = BOARDS[0];
+  const board = useBoard();
+  const bp = p.boards[board.id];
+  const comp = completion(p, board.id);
+  const next = nextAction(p, board.id);
+  const uno = board.summary;
   const pushToast = useUi((s) => s.pushToast);
   const row = (label: string, v: number, extra?: string) => (
     <div><span>{label}</span><span className={v >= 1 ? 'ok' : ''}>{extra ?? `${Math.round(v * 100)}%`}</span></div>
   );
   return (
-    <section className="hero" id="uno">
+    <section className="hero" id="board">
       <div className="container">
         <div className="hero-grid">
           <div className="panel hero-info">
-            <div className="hero-meta"><span>ARDUINO · {uno.year}</span><span>01 / 08</span></div>
+            <div className="hero-meta"><span>{uno.maker.toUpperCase()} · {uno.year}</span><span>{String(uno.num).padStart(2, '0')} / {String(BOARDS.length).padStart(2, '0')}</span></div>
             <div>
               <span className="kicker">做機器人一定會碰到的 8 塊開發板</span>
               <h1>{uno.name}</h1>
@@ -54,8 +57,8 @@ export function Hero() {
               <div className="ring-list">
                 {row('工作台任務', comp.missions, `${comp.doneSteps}/${comp.totalSteps} 步`)}
                 {row('課程', comp.lesson)}
-                {row('找零件測驗', comp.quiz, `${p.quizBest}/6`)}
-                {row('拆裝組裝', comp.asm, p.assemblyDone ? '完成' : '未完成')}
+                {row('找零件測驗', comp.quiz, `${bp?.quizBest ?? 0}/6`)}
+                {row('拆裝組裝', comp.asm, bp?.assemblyDone ? '完成' : '未完成')}
               </div>
             </div>
             <div className="next-card">
@@ -67,19 +70,24 @@ export function Hero() {
           <Stage />
         </div>
         <div className="board-strip" role="list" aria-label="8 塊開發板">
-          {BOARDS.map((b) => (
-            <button
-              key={b.id}
-              role="listitem"
-              className={`board-card ${b.id === 'uno' ? 'on' : ''} ${b.locked ? 'locked' : ''}`}
-              onClick={() => (b.locked ? pushToast({ text: `${b.name}：完成 Uno 後的下一階段開放`, kind: 'info' }) : scrollToId('uno'))}
-              title={b.tagline}
-            >
-              <span className="n">{String(b.num).padStart(2, '0')} · {b.level}</span>
-              <span className="t">{b.name}</span>
-              {b.locked && <span className="lock"><IconLock size={13} /></span>}
-            </button>
-          ))}
+          {BOARDS.map((b) => {
+            const lock = b.locked || !isPlayable(b.id);
+            const pct = lock ? 0 : completion(p, b.id).pct;
+            return (
+              <button
+                key={b.id}
+                role="listitem"
+                aria-current={b.id === board.id ? 'true' : undefined}
+                className={`board-card ${b.id === board.id ? 'on' : ''} ${lock ? 'locked' : ''}`}
+                onClick={() => (lock ? pushToast({ text: `${b.name}：製作中，即將開放`, kind: 'info' }) : switchBoard(b.id))}
+                title={b.tagline}
+              >
+                <span className="n">{String(b.num).padStart(2, '0')} · {b.level}</span>
+                <span className="t">{b.name}</span>
+                {lock ? <span className="lock"><IconLock size={13} /></span> : <span className="pct mono">{Math.round(pct * 100)}%</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>

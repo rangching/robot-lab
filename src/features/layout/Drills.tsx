@@ -1,10 +1,15 @@
 import { useProgress } from '../progress/store';
 import { go } from './nav';
 import { IconPlay } from '../../lib/icons';
+import { useBoard } from '../../lib/useBoard';
+import { asmParts } from '../assembly/useAssembly';
 
 export function Drills() {
-  const quizBest = useProgress((s) => s.quizBest);
-  const asmDone = useProgress((s) => s.assemblyDone);
+  const board = useBoard();
+  const quizBest = useProgress((s) => s.boards[board.id]?.quizBest ?? 0);
+  const asmDone = useProgress((s) => s.boards[board.id]?.assemblyDone ?? false);
+  const nAsm = asmParts(board).length;
+  const hasBottom = board.lesson.parts.some((p) => p.side === 'bottom');
   return (
     <section className="section" id="drills">
       <div className="container">
@@ -12,7 +17,7 @@ export function Drills() {
           <div>
             <span className="section-num"><b>03</b>測驗與組裝</span>
             <h2>親手找、親手裝，才記得住</h2>
-            <p>兩個練習都在最上方的 3D 模型上進行。讀一百遍說明，不如自己找一次零件。</p>
+            <p>兩個練習都在最上方的 {board.short} 3D 模型上進行。讀一百遍說明，不如自己找一次零件。</p>
           </div>
         </div>
         <div className="grid-2">
@@ -33,7 +38,7 @@ export function Drills() {
           <div className="panel drill-card">
             <span className="kicker">組裝 · 幾分鐘</span>
             <h3>拆開，再焊回去</h3>
-            <p className="muted" style={{ margin: 0 }}>板子拆成一盤零件。把每顆晶片、接頭、排母放回它的絲印外框，再一個一個焊上去。</p>
+            <p className="muted" style={{ margin: 0 }}>板子拆成一盤零件。把每顆晶片、接頭、{board.header ?? '排母'}放回它的絲印外框，再一個一個焊上去。{hasBottom ? '背面的零件出廠時已經焊好，這次只裝正面。' : ''}</p>
             <ol>
               <li>從托盤拖起一個零件。</li>
               <li>放到板子上對應的白色外框，靠近就會自動吸附。</li>
@@ -41,7 +46,7 @@ export function Drills() {
             </ol>
             <div className="row">
               <button className="btn primary" onClick={() => go('assembly')}><IconPlay size={13} /> 開始組裝</button>
-              <span className="best">15 個零件 · {asmDone ? '已完成 ✓' : '尚未完成'}</span>
+              <span className="best">{nAsm} 個零件 · {asmDone ? '已完成 ✓' : '尚未完成'}</span>
             </div>
           </div>
         </div>

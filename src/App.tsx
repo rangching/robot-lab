@@ -12,15 +12,19 @@ import { useProgress } from './features/progress/store';
 import { completion } from './features/progress/completion';
 import { music } from './features/music/music';
 import { setSfxEnabled } from './features/music/sfx';
-import { go } from './features/layout/nav';
+import { go, syncBoard } from './features/layout/nav';
+import { BOARD_DATA } from './data/boards/registry';
+import { BADGES } from './features/progress/badges';
+import type { BoardId } from './data/types';
 
 export default function App() {
   const touchStreak = useProgress((s) => s.touchStreak);
   const p = useProgress();
-  const pct = completion(p).pct;
+  const doneBoards = (Object.keys(BOARD_DATA) as BoardId[]).filter((b) => completion(p, b).pct >= 0.999).join(',');
 
   useEffect(() => {
     touchStreak();
+    syncBoard();
     const s = useProgress.getState().settings;
     setSfxEnabled(s.sfxOn);
     music.init({
@@ -34,9 +38,15 @@ export default function App() {
     if (h === 'quiz' || h === 'assembly') setTimeout(() => go(h), 300);
   }, [touchStreak]);
 
+  // 每塊板子完成度 100% 時頒「全制霸」徽章（徽章 id：板子 id + '-master'）
   useEffect(() => {
-    if (pct >= 0.999) useProgress.getState().grantBadge('uno-master');
-  }, [pct]);
+    if (!doneBoards) return;
+    for (const b of doneBoards.split(',')) if (BADGES.some((x) => x.id === `${b}-master`)) useProgress.getState().grantBadge(`${b}-master`);
+  }, [doneBoards]);
+
+  // 換板子時同步模擬器與工作台
+  const board = useProgress((s) => s.board);
+  useEffect(() => { syncBoard(); }, [board]);
 
   return (
     <>
@@ -63,7 +73,7 @@ export default function App() {
         <Badges />
       </main>
       <footer className="site">
-        <div className="container">機器人實驗室 · Uno 試做版 · 3D 模型、文字與配樂皆為原創 · 進度只存在這個瀏覽器</div>
+        <div className="container">機器人實驗室 · 已開放 {Object.values(BOARD_DATA).map((b) => b!.short).join('、')} · 3D 模型、文字與配樂皆為原創 · 進度只存在這個瀏覽器</div>
       </footer>
       <Toasts />
       <LevelUp />

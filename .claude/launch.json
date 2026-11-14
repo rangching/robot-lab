@@ -1,6 +1,91 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "robot-lab", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5199 }
+    {
+      "name": "robot-lab",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5199
+    },
+    {
+      "name": "robot-lab-mega",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5299",
+        "--strictPort"
+      ],
+      "port": 5299
+    },
+    {
+      "name": "robot-lab-nano",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5399",
+        "--strictPort"
+      ],
+      "port": 5399
+    },
+    {
+      "name": "robot-lab-esp32",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5499",
+        "--strictPort"
+      ],
+      "port": 5499
+    },
+    {
+      "name": "robot-lab-nodemcu",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5599",
+        "--strictPort"
+      ],
+      "port": 5599
+    },
+    {
+      "name": "robot-lab-bluepill",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5799",
+        "--strictPort"
+      ],
+      "port": 5799
+    },
+    {
+      "name": "robot-lab-pico",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5699",
+        "--strictPort"
+      ],
+      "port": 5699
+    },
+    {
+      "name": "robot-lab-rpi4",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5899",
+        "--strictPort"
+      ],
+      "port": 5899
+    }
   ]
 }

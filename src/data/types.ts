@@ -19,8 +19,10 @@ export interface PartDef {
   desc: string;
   /** 零件中心位置（3D，公分） */
   at: [number, number, number];
-  /** 爆炸圖層級：越大浮得越高 */
+  /** 爆炸圖層級：越大浮得越高；負數代表往下（背面零件） */
   layer: number;
+  /** 焊在背面的零件（3D 模型會翻轉到板子下方） */
+  side?: 'top' | 'bottom';
 }
 
 export interface QuizQ {
@@ -30,8 +32,10 @@ export interface QuizQ {
   explain: string;
 }
 
+export type BoardId = 'uno' | 'nano' | 'mega' | 'esp32' | 'nodemcu' | 'pico' | 'bluepill' | 'rpi4';
+
 export interface BoardSummary {
-  id: string;
+  id: BoardId;
   num: number;
   name: string;
   maker: string;

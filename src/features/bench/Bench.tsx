@@ -5,13 +5,15 @@ import CameraControlsImpl from 'camera-controls';
 import { SceneBase } from '../../three/SceneBase';
 import { BenchScene } from './BenchScene';
 import { useBench, WIRE_COLORS, type MissionId } from './benchStore';
-import { MISSIONS, MISSION_MAP, MISSION_XP_DONE, MISSION_XP_STEP, type Ctx } from './missions';
+import { MISSION_MAP, MISSION_XP_DONE, MISSION_XP_STEP, missionsFor, type Ctx } from './missions';
 import { CATALOG, LIB_ORDER } from '../../sim/catalog';
 import { Engine, freshObserved, resetVisual, simVisual } from '../../sim/engine';
 import { buildNets } from '../../sim/netlist';
-import { FREE_PROGRAMS, parseCode } from '../../sim/programs';
+import { freePrograms, parseCode } from '../../sim/programs';
+import { WebPhone } from './WebPhone';
 import type { CompType } from '../../sim/types';
 import { useProgress } from '../progress/store';
+import { boardData } from '../../data/boards/registry';
 import { sfx } from '../music/sfx';
 import { buzzerTone } from '../music/tone';
 import { highlight } from '../../lib/syntax';
@@ -109,12 +111,15 @@ export function Bench() {
   simVisual.pot = st.pot;
   simVisual.distance = st.distance;
 
+  const MISSIONS = missionsFor(st.board);
+  const boardName = boardData(st.board).short;
   const mission = st.missionId === 'free' ? null : MISSION_MAP[st.missionId];
   const program = st.program();
   const parsed = useMemo(() => parseCode(program.code), [program]);
   const hlLine = st.tag ? parsed.tagLine[st.tag] : -1;
   const doneCount = mission ? progress.missionSteps[mission.id] ?? 0 : 0;
-  const freeUnlocked = progress.missionsDone.includes('m2');
+  // 任何一塊板子的任務 2 完成後解鎖自由建構
+  const freeUnlocked = progress.missionsDone.some((id) => MISSION_MAP[id]?.num === 2);
 
   const unlocked = (i: number) => i === 0 || progress.missionsDone.includes(MISSIONS[i - 1].id);
 
@@ -174,15 +179,22 @@ export function Bench() {
     music.nudgeOnActivity();
   };
 
-  const view = (kind: 'top' | 'iso') => {
-    if (kind === 'top') void ctl.current?.setLookAt(0.4, 19, 2, 0.4, 0, 0.6, true);
-    else void ctl.current?.setLookAt(0.4, 13.5, 10.5, 0.4, 0, 0.6, true);
+  /** 依板子佔地取景：從板子左緣到元件區右側（x ≈ 9.5） */
+  const frame = (kind: 'top' | 'iso', smooth: boolean, c = ctl.current) => {
+    const { pos, half } = boardData(useBench.getState().board).bench;
+    const left = pos[0] - half[0];
+    const cx = Math.round(((left + 9.5) / 2 - 0.4) * 10) / 10; // Uno：0.4（與試做版相同）
+    const k = Math.max(1, (9.5 - left) / 17.4);
+    if (kind === 'top') void c?.setLookAt(cx, 19 * k, 2 * k, cx, 0, 0.6, smooth);
+    else void c?.setLookAt(cx, 13.5 * k, 10.5 * k, cx, 0, 0.6, smooth);
   };
+  const view = (kind: 'top' | 'iso') => frame(kind, true);
+  useEffect(() => { frame('iso', true); }, [st.board]);
 
   // CameraControls 在 Canvas 內部掛載，用 callback ref 確保拿到實體後再設定
   const setCtl = (c: CameraControlsImpl | null) => {
     if (c && ctl.current !== c) {
-      void c.setLookAt(0.4, 13.5, 10.5, 0.4, 0, 0.6, false);
+      frame('iso', false, c);
       const A = CameraControlsImpl.ACTION;
       c.mouseButtons.left = A.NONE;
       c.mouseButtons.right = A.ROTATE;
@@ -226,7 +238,7 @@ export function Bench() {
               </button>
             );
           })}
-          <button className={`mission-btn ${st.missionId === 'free' ? 'on' : ''}`} disabled={!freeUnlocked} onClick={() => pickMission('free')} title={freeUnlocked ? '' : '完成任務 2 後解鎖'}>
+          <button className={`mission-btn ${st.missionId === 'free' ? 'on' : ''}`} disabled={!freeUnlocked} onClick={() => pickMission('free')} title={freeUnlocked ? '' : '完成任一塊板子的任務 2 後解鎖'}>
             <span className="mn">{freeUnlocked ? '∞' : <IconLock size={13} />}</span>
             <span>自由建構<small>{freeUnlocked ? '想接什麼就接什麼' : '完成任務 2 後解鎖'}</small></span>
             <span className="xp" />
@@ -235,7 +247,7 @@ export function Bench() {
 
         {mission ? (
           <div className="panel steps">
-            <span className="kicker">任務 {mission.num} / {MISSIONS.length}</span>
+            <span className="kicker">{boardName} 任務 {mission.num} / {MISSIONS.length}</span>
             <h3>{mission.title}</h3>
             <p className="goal">{mission.goal}</p>
             <ol>
@@ -248,7 +260,7 @@ export function Bench() {
                       {s.text}
                       {state !== '' && s.why && <span className="why">{s.why}</span>}
                       {state === 'cur' && s.ack && (
-                        <button className="btn sm primary" style={{ marginTop: 8 }} onClick={() => st.ack(`${mission.id}-read`)}>{s.ack}</button>
+                        <button className="btn sm primary" style={{ marginTop: 8 }} onClick={() => st.ack(`${mission.id}-s${i}`)}>{s.ack}</button>
                       )}
                     </span>
                   </li>
@@ -263,7 +275,7 @@ export function Bench() {
             <p className="goal muted" style={{ margin: 0, fontSize: 14 }}>挑一支範例程式，照程式裡的腳位自己接線。按執行前一樣會做安全檢查。</p>
             <label htmlFor="free-prog" className="dim" style={{ fontSize: 13 }}>範例程式</label>
             <select id="free-prog" value={st.freeProgramId} onChange={(e) => st.setFreeProgram(e.target.value)} disabled={st.running}>
-              {FREE_PROGRAMS.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              {freePrograms(st.board).map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
           </div>
         )}
@@ -308,8 +320,9 @@ export function Bench() {
             ))}
           </div>
 
-          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar) && (
+          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id)) && (
             <div className="panel controls-float">
+              {/-wifi$/.test(program.id) && <WebPhone running={st.running} />}
               {hasPot.map((p, i) => (
                 <label key={p.id}>
                   <span className="row"><span>旋鈕{hasPot.length > 1 ? ` #${i + 1}` : ''}</span><span className="mono">{Math.round((st.pot[p.id] ?? 0.5) * 100)}%</span></span>
@@ -410,7 +423,7 @@ export function Bench() {
         </div>
         <div className="panel serial">
           <header>
-            <span>序列埠監控視窗 · 9600 baud</span>
+            <span>序列埠監控視窗 · {/Serial\.begin\((\d+)\)/.exec(program.code)?.[1] ?? '9600'} baud</span>
             <span>{st.serial.length} 行</span>
           </header>
           <SerialView lines={st.serial} />

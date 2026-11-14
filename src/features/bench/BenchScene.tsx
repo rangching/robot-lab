@@ -2,22 +2,27 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { UnoModel, type Lights } from '../../three/boards/UnoModel';
+import { BoardModel } from '../../three/boards/BoardModel';
+import { boardVisual, type Lights } from '../../three/boards/visuals';
 import { DragController } from '../../three/DragController';
-import { UNO_PIN_MAP } from '../../data/boards/uno';
 import { PIN_COLORS, PIN_KIND_LABEL, type PinDef } from '../../data/types';
 import { CATALOG } from '../../sim/catalog';
 import { simVisual } from '../../sim/engine';
 import { splitEp, type Comp, type Endpoint } from '../../sim/types';
-import { UNO_POS, useBench } from './benchStore';
+import { useBench } from './benchStore';
+import { MCU, simBoard } from '../../sim/board';
+import { useBoard } from '../../lib/useBoard';
 import { CompBody, PIN_TOP } from './compModels';
 import { IconTrash } from '../../lib/icons';
 
 export function epPos(e: Endpoint, comps: Comp[]): THREE.Vector3 | null {
   const [o, p] = splitEp(e);
-  if (o === 'uno') {
-    const pin = UNO_PIN_MAP[p];
-    return pin ? new THREE.Vector3(UNO_POS[0] + pin.x, 0.87, UNO_POS[2] + pin.z) : null;
+  if (o === MCU) {
+    const b = simBoard();
+    const pin = b.pins.find((x) => x.id === p);
+    if (!pin) return null;
+    const [x, y, z] = b.bench.pin(pin);
+    return new THREE.Vector3(b.bench.pos[0] + x, b.bench.pos[1] + y, b.bench.pos[2] + z);
   }
   const c = comps.find((x) => x.id === o);
   if (!c) return null;
@@ -27,9 +32,10 @@ export function epPos(e: Endpoint, comps: Comp[]): THREE.Vector3 | null {
 
 function epLabel(e: Endpoint, comps: Comp[]) {
   const [o, p] = splitEp(e);
-  if (o === 'uno') {
-    const pin = UNO_PIN_MAP[p];
-    return { title: `Uno ${pin?.label ?? p}`, sub: pin ? `${PIN_KIND_LABEL[pin.kind]} · ${pin.desc}` : '' };
+  if (o === MCU) {
+    const b = simBoard();
+    const pin = b.pins.find((x) => x.id === p);
+    return { title: `${b.short} ${pin?.label ?? p}`, sub: pin ? `${PIN_KIND_LABEL[pin.kind]} · ${pin.desc}` : '' };
   }
   const c = comps.find((x) => x.id === o);
   if (!c) return { title: e, sub: '' };
@@ -119,8 +125,8 @@ function PendingWire({ from }: { from: THREE.Vector3 }) {
   return <Line points={pts} color="#16a34a" lineWidth={3} dashed dashSize={0.18} gapSize={0.1} />;
 }
 
-/** Uno 的指示燈跟著模擬狀態變化（只在數值改變時重繪） */
-function BenchUno({ children, pinVisual, onPinOver, onPinClick }: { children?: React.ReactNode; pinVisual: (p: PinDef) => { color?: string; opacity?: number; pulse?: boolean } | undefined; onPinOver: (p: PinDef | null) => void; onPinClick: (p: PinDef) => void }) {
+/** 開發板的指示燈跟著模擬狀態變化（只在數值改變時重繪） */
+function BenchBoard({ children, pinVisual, onPinOver, onPinClick }: { children?: React.ReactNode; pinVisual: (p: PinDef) => { color?: string; opacity?: number; pulse?: boolean } | undefined; onPinOver: (p: PinDef | null) => void; onPinClick: (p: PinDef) => void }) {
   const [lights, setLights] = useState<Lights>({ ON: 1 });
   const last = useRef('');
   useFrame(() => {
@@ -131,9 +137,28 @@ function BenchUno({ children, pinVisual, onPinOver, onPinClick }: { children?: R
       setLights(l);
     }
   });
+  const board = useBoard();
+  const Extras = boardVisual(board.id).BenchExtras;
+  const { pos, lift, pin } = board.bench;
   return (
-    <group position={UNO_POS}>
-      <UnoModel lights={lights} pins pinVisual={pinVisual} onPinOver={onPinOver} onPinClick={onPinClick}>{children}</UnoModel>
+    <group position={pos}>
+      {Extras && <Extras />}
+      <group position={[0, lift, 0]}>
+        <BoardModel
+          board={board.id}
+          lights={lights}
+          pins
+          pinVisual={pinVisual}
+          onPinOver={onPinOver}
+          onPinClick={onPinClick}
+          pinPos={(p) => {
+            const [x, y, z] = pin(p);
+            return [x, y - lift, z];
+          }}
+        >
+          {children}
+        </BoardModel>
+      </group>
     </group>
   );
 }
@@ -168,7 +193,7 @@ export function BenchScene() {
   const warnEps = useMemo(() => new Set(issues.filter((i) => i.level === 'warn').flatMap((i) => i.endpoints)), [issues]);
 
   const pinVisual = (p: PinDef) => {
-    const e = `uno:${p.id}`;
+    const e = `${MCU}:${p.id}`;
     if (errEps.has(e)) return { color: '#ff2040', opacity: 0.5, pulse: true };
     if (pending === e) return { color: '#16a34a', opacity: 0.7, pulse: true };
     if (warnEps.has(e)) return { color: '#f59e0b', opacity: 0.5, pulse: true };
@@ -183,10 +208,10 @@ export function BenchScene() {
   return (
     <>
       <DevExpose />
-      <BenchUno
+      <BenchBoard
         pinVisual={pinVisual}
-        onPinOver={(p) => setHoverEp(p ? `uno:${p.id}` : null)}
-        onPinClick={(p) => clickPin(`uno:${p.id}`)}
+        onPinOver={(p) => setHoverEp(p ? `${MCU}:${p.id}` : null)}
+        onPinClick={(p) => clickPin(`${MCU}:${p.id}`)}
       />
 
       {comps.map((c) => {

@@ -4,7 +4,7 @@ import { levelOf } from '../progress/levels';
 import { IconFlame } from '../../lib/icons';
 
 const NAV = [
-  { id: 'uno', label: '3D 檢視' },
+  { id: 'board', label: '3D 檢視' },
   { id: 'bench', label: '工作台' },
   { id: 'lesson', label: '課程' },
   { id: 'drills', label: '測驗與組裝' },
@@ -16,7 +16,7 @@ export function Hud() {
   const xp = useProgress((s) => s.xp);
   const streak = useProgress((s) => s.streak.days);
   const lv = levelOf(xp);
-  const [active, setActive] = useState('uno');
+  const [active, setActive] = useState('board');
 
   useEffect(() => {
     const els = NAV.map((n) => document.getElementById(n.id)).filter(Boolean) as HTMLElement[];
@@ -35,7 +35,7 @@ export function Hud() {
   return (
     <header className="hud">
       <div className="container hud-inner">
-        <a className="brand" href="#uno">
+        <a className="brand" href="#board">
           <span className="brand-mark">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2"><rect x="5" y="5" width="14" height="14" rx="2" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /><circle cx="12" cy="12" r="2.5" fill="#fef08a" stroke="none" /></svg>
           </span>
