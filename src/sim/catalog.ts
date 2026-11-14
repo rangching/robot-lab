@@ -69,6 +69,16 @@ export const CATALOG: Record<CompType, CompSpec> = {
     pins: [{ id: 'P', label: '+5V', dx: -0.5, dz: 0.6 }, { id: 'N', label: 'GND', dx: 0.5, dz: 0.6 }],
     desc: '電池盒＋穩壓模組，專門給馬達、伺服機用的獨立電源。',
   },
+  prop: {
+    type: 'prop', name: '螺旋槳', short: '螺旋槳', w: 2.0, d: 1.7,
+    pins: [{ id: 'HUB', label: '槳轂', dx: 0, dz: 0.55, color: '#0ea5e9' }],
+    desc: '31 mm 兩葉槳。分順時針（CW）槳和逆時針（CCW）槳：把槳轂接到馬達軸就是裝上去，轉向一定要和馬達一致。',
+  },
+  lipo: {
+    type: 'lipo', name: '1S 鋰電池 300 mAh', short: '鋰電池', w: 2.6, d: 1.6,
+    pins: [{ id: 'P', label: '+', dx: -0.5, dz: 0.55, color: '#e0362c' }, { id: 'N', label: '−', dx: 0.5, dz: 0.55, color: '#1e293b' }],
+    desc: '單顆高壓鋰電池（3.7 V 標稱、充飽 4.35 V）。紅線＋接 BAT+、黑線−接 BAT−，接反會燒壞電源電路。',
+  },
 };
 
-export const LIB_ORDER: CompType[] = ['led', 'resistor', 'button', 'pot', 'buzzer', 'servo', 'hcsr04', 'psu'];
+export const LIB_ORDER: CompType[] = ['led', 'resistor', 'button', 'pot', 'buzzer', 'servo', 'hcsr04', 'psu', 'prop', 'lipo'];

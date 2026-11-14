@@ -1,4 +1,4 @@
-export type PinKind = 'power' | 'gnd' | 'digital' | 'pwm' | 'analog' | 'bus' | 'control' | 'nc';
+export type PinKind = 'power' | 'gnd' | 'digital' | 'pwm' | 'analog' | 'bus' | 'control' | 'nc' | 'motor';
 
 /** 板子上的一支腳位（座標單位：公分，原點在板子中心，x 向右、z 向下） */
 export interface PinDef {
@@ -32,7 +32,7 @@ export interface QuizQ {
   explain: string;
 }
 
-export type BoardId = 'uno' | 'nano' | 'mega' | 'esp32' | 'nodemcu' | 'pico' | 'bluepill' | 'rpi4';
+export type BoardId = 'uno' | 'nano' | 'mega' | 'esp32' | 'nodemcu' | 'pico' | 'bluepill' | 'rpi4' | 'stampfly';
 
 export interface BoardSummary {
   id: BoardId;
@@ -77,6 +77,7 @@ export const PIN_COLORS: Record<PinKind, string> = {
   bus: '#7c3aed',
   control: '#ea580c',
   nc: '#94a3b8',
+  motor: '#0ea5e9',
 };
 
 export const PIN_KIND_LABEL: Record<PinKind, string> = {
@@ -88,4 +89,5 @@ export const PIN_KIND_LABEL: Record<PinKind, string> = {
   bus: '通訊匯流排',
   control: '控制（RESET）',
   nc: '未連接',
+  motor: '馬達軸（裝螺旋槳）',
 };

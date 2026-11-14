@@ -2,6 +2,7 @@ import { buildNets, type Nets } from './netlist';
 import { MCU, gndEps, supplyEps, simBoard, IO_PIN } from './board';
 import { ep, splitEp, type Comp, type Endpoint, type Issue, type Wire } from './types';
 import { checks3v3 } from './rules3v3';
+import { checksDrone } from './rulesDrone';
 
 export interface NetInfo {
   supply5: boolean;
@@ -83,7 +84,7 @@ export function sideOf(nets: Nets, e: Endpoint, comps: Comp[], outputs: string[]
 }
 
 const NAME_OF = (c: Comp, idx: number) => {
-  const n: Record<string, string> = { led: 'LED', resistor: '電阻', button: '按鈕', pot: '可變電阻', buzzer: '蜂鳴器', servo: '伺服機', hcsr04: '超音波模組', psu: '外接電源' };
+  const n: Record<string, string> = { led: 'LED', resistor: '電阻', button: '按鈕', pot: '可變電阻', buzzer: '蜂鳴器', servo: '伺服機', hcsr04: '超音波模組', psu: '外接電源', prop: '螺旋槳', lipo: '鋰電池' };
   return `${n[c.type]}${idx > 1 ? ` #${idx}` : ''}`;
 };
 
@@ -210,6 +211,8 @@ export function checkCircuit(comps: Comp[], wires: Wire[], outputs: string[] | n
       }),
     );
   }
+  // 4. 無人機：電池極性、螺旋槳轉向
+  if (board.id === 'stampfly') issues.push(...checksDrone(nets, comps, outputs, (c) => label.get(c.id)!));
   return issues;
 }
 

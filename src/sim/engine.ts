@@ -2,6 +2,8 @@ import { Circuit, type PinOut, type SimInputs } from './circuit';
 import { ep, type Comp, type Wire } from './types';
 import type { Gen, IO, ProgramDef, PinMode } from './programs';
 import { simBoard } from './board';
+import { FlightSim, MOTORS, MOTOR_GPIO, deg, type MotorId } from './flight';
+import { droneHardware, useDrone } from './drone';
 
 export interface Observed {
   runMs: number;
@@ -18,12 +20,40 @@ export interface Observed {
   distMin: number;
   distMax: number;
   tones: number;
+  /** 無人機：轉過的馬達、解鎖成功／被拒絕次數、上鎖次數 */
+  motorsSpun: string[];
+  arms: number;
+  armRefused: number;
+  disarms: number;
+  /** 無人機：最高離地高度（cm）、翻覆次數、IMU 讀取次數、手動傾斜的最大角度（度） */
+  altMax: number;
+  flipped: number;
+  imuReads: number;
+  tiltMax: number;
+  /** 定高模式：在空中的時間、在目標 ±3 cm 內的時間、停在目標下方 5–40 cm 的時間（毫秒） */
+  holdMs: number;
+  hoverMs: number;
+  lowHoverMs: number;
+  maxThr: number;
 }
 
 export const freshObserved = (): Observed => ({
   runMs: 0, blinksL: 0, extLedOn: 0, pressLit: false, potMin: 1, potMax: 0, ledMin: 1, ledMax: 0,
   servoMin: 999, servoMax: -999, distReads: 0, distMin: 999, distMax: -1, tones: 0,
+  motorsSpun: [], arms: 0, armRefused: 0, disarms: 0, altMax: 0, flipped: 0, imuReads: 0, tiltMax: 0,
+  holdMs: 0, hoverMs: 0, lowHoverMs: 0, maxThr: 0,
 });
+
+/** 無人機的畫面狀態（高度 m、姿態 rad、四顆馬達轉速 0–1） */
+export interface DroneVisual {
+  alt: number;
+  roll: number;
+  pitch: number;
+  yaw: number;
+  w: Record<MotorId, number>;
+  armed: boolean;
+  flipped: boolean;
+}
 
 /** 給 3D 場景每幀讀取的畫面狀態（可變物件，不觸發 React 重繪） */
 export interface SimVisual {
@@ -38,9 +68,10 @@ export interface SimVisual {
   pressed: Record<string, boolean>;
   pot: Record<string, number>;
   distance: number;
+  drone: DroneVisual | null;
 }
 
-export const simVisual: SimVisual = { running: false, L: 0, TX: 0, RX: 0, led: {}, servo: {}, buzz: {}, sonar: {}, pressed: {}, pot: {}, distance: 40 };
+export const simVisual: SimVisual = { running: false, L: 0, TX: 0, RX: 0, led: {}, servo: {}, buzz: {}, sonar: {}, pressed: {}, pot: {}, distance: 40, drone: null };
 
 export const UPLOAD_MS = 900;
 
@@ -56,6 +87,9 @@ export class Engine {
   servoAngle: Record<string, number> = {};
   tones: Record<string, number> = {};
   obs = freshObserved();
+  /** 無人機飛行模擬（只有 Stamp Fly 才有） */
+  fly: FlightSim | null = null;
+  private telemAt = 0;
   private prevL = 0;
   private prevLed: Record<string, number> = {};
 
@@ -69,6 +103,10 @@ export class Engine {
   ) {
     this.circuit = new Circuit(comps, wires);
     for (const c of comps) if (c.type === 'servo') this.servoAngle[c.id] = 90;
+    if (simBoard().id === 'stampfly') {
+      this.fly = new FlightSim(droneHardware(comps, this.circuit.nets(new Set())));
+      useDrone.getState().clearRun();
+    }
     this.gen = program.run(this.io(), params);
   }
 
@@ -135,7 +173,80 @@ export class Engine {
         simVisual.TX = 1;
         self.hooks.serial(s);
       },
+      drone: {
+        setup(cfg) {
+          self.fly?.setup(cfg);
+        },
+        take() {
+          return useDrone.getState().take();
+        },
+        arm(on) {
+          const f = self.fly;
+          if (!f) return '這塊板子沒有飛控';
+          if (!on) {
+            if (f.armed) self.obs.disarms++;
+            f.disarm();
+            return null;
+          }
+          const why = f.arm(useDrone.getState().stick);
+          if (why) self.obs.armRefused++;
+          else self.obs.arms++;
+          self.refused = why;
+          return why;
+        },
+        imu() {
+          self.obs.imuReads++;
+          const s = self.fly?.s;
+          return { roll: s ? deg(s.roll) : 0, pitch: s ? deg(s.pitch) : 0, yaw: s ? deg(s.yaw) : 0, alt: self.fly ? self.fly.tof() * 100 : 0, vbat: s?.vbat ?? 0 };
+        },
+        state() {
+          const f = self.fly;
+          return { armed: !!f?.armed, flipped: !!f?.flipped, landing: !!f?.landing };
+        },
+      },
     };
+  }
+
+  private refused: string | null = null;
+
+  /** 無人機：物理前進一步，更新觀察值、畫面與遙測 */
+  private stepDrone(dt: number) {
+    const f = this.fly!;
+    const direct = Object.fromEntries(MOTORS.map((m) => {
+      const o = this.outs[MOTOR_GPIO[m]];
+      return [m, o?.mode === 'OUTPUT' ? o.level : 0];
+    })) as Record<MotorId, number>;
+    const stick = useDrone.getState().stick;
+    f.step(dt / 1000, direct, stick);
+    const s = f.s;
+    const o = this.obs;
+    for (const m of MOTORS) if (s.w[m] > 0.12 && !o.motorsSpun.includes(m)) o.motorsSpun = [...o.motorsSpun, m];
+    if (f.armed) o.maxThr = Math.max(o.maxThr, stick.thr);
+    o.altMax = Math.max(o.altMax, s.z * 100);
+    if (f.flipped && o.flipped === 0) o.flipped = 1;
+    if (!f.armed && s.onGround) o.tiltMax = Math.max(o.tiltMax, Math.abs(deg(s.roll)), Math.abs(deg(s.pitch)));
+    if (f.armed && f.cfg.mode === 'alt' && !f.landing && s.z > 0.05) {
+      o.holdMs += dt;
+      // 自動起飛的爬升結束後才開始算
+      if (Math.abs(f.altTarget - f.cfg.altRef) < 0.005) {
+        const e = (s.z - f.cfg.altRef) * 100;
+        if (Math.abs(e) <= 3) o.hoverMs += dt;
+        if (e < -5 && e > -40 && Math.abs(s.vz) < 0.05) o.lowHoverMs += dt;
+      }
+    }
+    simVisual.drone = { alt: s.z, roll: s.roll, pitch: s.pitch, yaw: s.yaw, w: { ...s.w }, armed: f.armed, flipped: f.flipped };
+    this.telemAt += dt;
+    if (this.telemAt >= 100) {
+      this.telemAt = 0;
+      useDrone.getState().setTelem(
+        {
+          armed: f.armed, flipped: f.flipped, landing: f.landing, mode: f.cfg.mode,
+          alt: s.z * 100, ref: f.cfg.mode === 'alt' ? f.altTarget * 100 : 0, vbat: s.vbat,
+          roll: deg(s.roll), pitch: deg(s.pitch), yaw: deg(s.yaw), refused: this.refused,
+        },
+        this.now,
+      );
+    }
   }
 
   tick(dt: number) {
@@ -162,6 +273,7 @@ export class Engine {
   }
 
   private updateVisual(dt: number) {
+    if (this.fly) this.stepDrone(dt);
     const inp = this.inputs();
     // 板上 LED：Uno／Nano／Mega 在 D13，ESP32 在 D2
     const led = this.outs[simBoard().ledPin ?? 'D13'];
@@ -228,4 +340,5 @@ export function resetVisual() {
   simVisual.servo = {};
   simVisual.buzz = {};
   simVisual.sonar = {};
+  simVisual.drone = null;
 }

@@ -18,4 +18,10 @@ export interface BoardVisual {
   makeBottom: () => THREE.CanvasTexture;
   /** 工作台上的額外物件（Nano 的麵包板），座標相對工作台上的板子位置 */
   BenchExtras?: FC;
+  /** 不是長方形的 PCB（Stamp Fly 的 X 形機身）：自己畫板子，取代預設的方盒 */
+  Pcb?: FC<{ top: THREE.Texture; bottom: THREE.Texture; edge: THREE.Material }>;
+  /** 工作台上會動的板子（無人機）：包住板子模型，負責抬升到 lift 高度並套用飛行姿態 */
+  BenchFly?: FC<{ lift: number; children: ReactNode }>;
+  /** 和 BenchFly 一致的座標轉換，讓接線端點跟著板子移動（輸入、輸出都相對工作台上的板子位置） */
+  benchXform?: (v: THREE.Vector3) => THREE.Vector3;
 }

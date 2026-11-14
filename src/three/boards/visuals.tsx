@@ -8,6 +8,7 @@ import { bluepillVisual } from './bluepillVisual';
 import { rpi4Visual } from './rpi4Visual';
 import { picoVisual } from './picoVisual';
 import { nodemcuVisual } from './nodemcuVisual';
+import { stampflyVisual } from './stampflyVisual';
 
 export type { BoardVisual, Lights } from './visualTypes';
 
@@ -20,6 +21,7 @@ export const BOARD_VISUALS: Partial<Record<BoardId, BoardVisual>> = {
   rpi4: rpi4Visual,
   pico: picoVisual,
   nodemcu: nodemcuVisual,
+  stampfly: stampflyVisual,
 };
 
 export const boardVisual = (id: BoardId): BoardVisual => BOARD_VISUALS[id] ?? unoVisual;

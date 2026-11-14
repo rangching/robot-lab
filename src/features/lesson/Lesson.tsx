@@ -74,7 +74,7 @@ export function Lesson() {
   const L = board.lesson;
   const S = board.summary;
   const b = board.id;
-  const kinds: PinKind[] = ['power', 'gnd', 'digital', 'pwm', 'analog', 'bus', 'control', 'nc'];
+  const kinds: PinKind[] = ['power', 'gnd', 'digital', 'pwm', 'analog', 'bus', 'control', 'nc', ...(board.pins.some((p) => p.kind === 'motor') ? (['motor'] as PinKind[]) : [])];
   return (
     <section className="section" id="lesson">
       <div className="container">

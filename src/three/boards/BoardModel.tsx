@@ -146,6 +146,7 @@ export function BoardModel({ board, explode = 0, lights = {}, offsets, highlight
   return (
     <group>
       {/* PCB 板：頂面在 y = 0 */}
+      {vis.Pcb ? <vis.Pcb top={top} bottom={bottom} edge={edge} /> : (
       <mesh position={[0, -vis.pcbT / 2, 0]} receiveShadow castShadow>
         <boxGeometry args={[data.w, vis.pcbT, data.d]} />
         <primitive object={edge} attach="material-0" />
@@ -155,6 +156,7 @@ export function BoardModel({ board, explode = 0, lights = {}, offsets, highlight
         <primitive object={edge} attach="material-4" />
         <primitive object={edge} attach="material-5" />
       </mesh>
+      )}
 
       {data.lesson.parts.map((p) => {
         if (hiddenParts?.has(p.id)) return null;

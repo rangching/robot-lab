@@ -86,6 +86,17 @@
         "--strictPort"
       ],
       "port": 5899
+    },
+    {
+      "name": "robot-lab-stampfly",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5999",
+        "--strictPort"
+      ],
+      "port": 5999
     }
   ]
 }

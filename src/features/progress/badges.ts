@@ -54,5 +54,12 @@ export const BADGES: BadgeDef[] = [
   { id: 'bluepill-adc', name: '4096 階旋鈕', desc: '用 PA0 的 12 位元 ADC 調 PA8 的 PWM 亮度', xp: 30, color: '#ffc24b', glyph: 'knob' },
   { id: 'bluepill-ft', name: '5 V 容忍', desc: '超音波的 ECHO 直接接 FT 腳 PB9', xp: 30, color: '#a78bfa', glyph: 'wave' },
   { id: 'bluepill-irq', name: '中斷高手', desc: '用外部中斷讓按鈕切換 LED', xp: 30, color: '#ff5c7a', glyph: 'button' },
+  { id: 'sf-hello', name: 'Stamp Fly 報到', desc: '讓無人機的全彩燈閃起來', xp: 30, color: '#22e3ff', glyph: 'bulb' },
+  { id: 'sf-motor', name: '先拆槳再測', desc: '接對電池極性，四顆馬達逐顆測試', xp: 30, color: '#ff5c7a', glyph: 'shield' },
+  { id: 'sf-props', name: '對角同向', desc: '把 CW／CCW 槳裝在對的馬達上', xp: 30, color: '#ffc24b', glyph: 'spark' },
+  { id: 'sf-arm', name: '安全解鎖', desc: '被拒絕一次，再照正確流程起飛、降落', xp: 40, color: '#a78bfa', glyph: 'button' },
+  { id: 'sf-pid', name: 'PID 調參師', desc: '加上 I 項，讓無人機準確懸停在目標高度', xp: 50, color: '#7cff6b', glyph: 'knob' },
+  { id: 'sf-grove', name: '起飛警示燈', desc: '從 Grove PORT.B 外掛一顆解鎖警示燈', xp: 30, color: '#22e3ff', glyph: 'wave' },
+  { id: 'stampfly-master', name: 'Stamp Fly 全制霸', desc: 'M5Stamp Fly 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
   { id: 'bluepill-master', name: 'Blue Pill 全制霸', desc: 'Blue Pill 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
 ];

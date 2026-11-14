@@ -83,7 +83,8 @@ describe('每塊板子的資料一致', () => {
       expect(new Set(pinIds).size).toBe(pinIds.length);
       [...b!.supply, ...b!.gnd, ...b!.analogOnly, ...b!.internalNets.flat()].forEach((id) => expect(pinIds).toContain(id));
       // 範例程式用到的腳位都要存在
-      for (const prog of freePrograms(b!.id)) prog.outputs.forEach((o) => expect(pinIds).toContain(o));
+      // （板內接死、沒拉出排針的 GPIO 也算，例如 Stamp Fly 的馬達腳）
+      for (const prog of freePrograms(b!.id)) prog.outputs.forEach((o) => expect([...pinIds, ...(b!.internalPins ?? [])]).toContain(o));
       // 腳位不能超出板子
       b!.pins.forEach((p) => { expect(Math.abs(p.x)).toBeLessThan(b!.w / 2); expect(Math.abs(p.z)).toBeLessThan(b!.d / 2); });
     });

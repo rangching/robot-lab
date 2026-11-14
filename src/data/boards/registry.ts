@@ -7,6 +7,7 @@ import { bluepillData } from './bluepill';
 import { rpi4Data } from './rpi4';
 import { picoData } from './pico';
 import { nodemcuData } from './nodemcu';
+import { stampflyData } from './stampfly';
 import { NANO_PINS, NANO_INTERNAL_NETS, NANO_FOOTPRINTS, NANO_W, NANO_D, nanoLesson, nx, nz } from './nano';
 
 /** [相機 x, y, z, 目標 x, y, z] */
@@ -49,6 +50,8 @@ export interface BoardData {
   strapLow?: string[];
   /** 和 USB 共用的序列埠腳（預設 D0、D1） */
   serialPins?: string[];
+  /** 板內接死、沒有拉出排針的 GPIO（Stamp Fly 的馬達驅動腳）；程式可以寫，但工作台上不能接線 */
+  internalPins?: string[];
   /** 腳位是排母還是排針（介面文字用，預設排母） */
   header?: '排母' | '排針';
   /** 零件外框（mm：中心 x, y, 寬, 高；原點在板子左下角） */
@@ -183,6 +186,7 @@ export const BOARD_DATA: Partial<Record<BoardId, BoardData>> = {
   rpi4: rpi4Data,
   pico: picoData,
   nodemcu: nodemcuData,
+  stampfly: stampflyData,
 };
 
 export const explodeGap = (b: BoardData) => b.stage.explodeGap ?? 0.9;

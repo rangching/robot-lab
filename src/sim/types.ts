@@ -1,11 +1,12 @@
-export type CompType = 'led' | 'resistor' | 'button' | 'pot' | 'buzzer' | 'servo' | 'hcsr04' | 'psu';
+export type CompType = 'led' | 'resistor' | 'button' | 'pot' | 'buzzer' | 'servo' | 'hcsr04' | 'psu' | 'prop' | 'lipo';
 
 export interface Comp {
   id: string;
   type: CompType;
   x: number;
   z: number;
-  props: { color?: string; ohms?: number };
+  /** dir：螺旋槳的轉向（cw 順時針槳、ccw 逆時針槳） */
+  props: { color?: string; ohms?: number; dir?: 'cw' | 'ccw' };
 }
 
 /** 端點格式：'mcu:D9'（開發板）、'c3:A'（元件） */

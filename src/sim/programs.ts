@@ -5,6 +5,8 @@
  */
 
 import type { BoardId } from '../data/types';
+import type { FlyConfig } from './flight';
+import { STAMPFLY_FREE_PROGRAMS } from './programsStampfly';
 import { ESP32_FREE_PROGRAMS } from './programsEsp32';
 import { BLUEPILL_FREE_PROGRAMS } from './programsBluepill';
 import { RPI4_FREE_PROGRAMS } from './programsRpi4';
@@ -25,6 +27,20 @@ export interface IO {
   tone(pin: string, freq: number): void;
   noTone(pin: string): void;
   print(s: string, newline?: boolean): void;
+  /** 無人機飛控（只有 Stamp Fly 的引擎會提供） */
+  drone?: DroneIO;
+}
+
+export interface DroneIO {
+  /** 設定飛行模式與高度 PID（kp、ki、kd：油門／公尺；altRef：公尺） */
+  setup(cfg: Partial<FlyConfig>): void;
+  /** 取出遙控器送來的解鎖／上鎖請求 */
+  take(): 'arm' | 'disarm' | undefined;
+  /** 解鎖或上鎖；回傳 null 代表成功，否則是拒絕的原因 */
+  arm(on: boolean): string | null;
+  /** IMU＋ToF＋電量（角度：度，高度：cm，電壓：V） */
+  imu(): { roll: number; pitch: number; yaw: number; alt: number; vbat: number };
+  state(): { armed: boolean; flipped: boolean; landing: boolean };
 }
 
 export interface Step { at: string; wait?: number }
@@ -365,6 +381,7 @@ export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
   rpi4: RPI4_FREE_PROGRAMS,
   pico: PICO_FREE_PROGRAMS,
   nodemcu: NODEMCU_FREE_PROGRAMS,
+  stampfly: STAMPFLY_FREE_PROGRAMS,
 };
 export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 

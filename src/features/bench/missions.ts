@@ -10,6 +10,7 @@ import { BLUEPILL_MISSIONS } from './missionsBluepill';
 import { RPI4_MISSIONS } from './missionsRpi4';
 import { PICO_MISSIONS } from './missionsPico';
 import { NODEMCU_MISSIONS } from './missionsNodemcu';
+import { STAMPFLY_MISSIONS } from './missionsStampfly';
 
 export interface Ctx {
   comps: Comp[];
@@ -184,6 +185,7 @@ export const MISSIONS_BY_BOARD: Partial<Record<BoardId, Mission[]>> = {
   rpi4: RPI4_MISSIONS,
   pico: PICO_MISSIONS,
   nodemcu: NODEMCU_MISSIONS,
+  stampfly: STAMPFLY_MISSIONS,
 };
 export const missionsFor = (b: BoardId): Mission[] => MISSIONS_BY_BOARD[b] ?? [];
 export const MISSIONS: Mission[] = Object.values(MISSIONS_BY_BOARD).flat() as Mission[];

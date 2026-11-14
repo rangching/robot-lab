@@ -11,6 +11,8 @@ import { Engine, freshObserved, resetVisual, simVisual } from '../../sim/engine'
 import { buildNets } from '../../sim/netlist';
 import { freePrograms, parseCode } from '../../sim/programs';
 import { WebPhone } from './WebPhone';
+import { DroneRemote } from './DroneRemote';
+import { DRONE_ONLY } from '../../sim/drone';
 import type { CompType } from '../../sim/types';
 import { useProgress } from '../progress/store';
 import { boardData } from '../../data/boards/registry';
@@ -31,13 +33,18 @@ const LIB_ICON: Record<string, React.ReactNode> = {
   servo: <svg viewBox="0 0 32 32"><rect x="5" y="11" width="20" height="12" rx="1.5" fill="#2f6fd6" /><circle cx="11" cy="11" r="3" fill="#2f6fd6" /><path d="M8 9h12" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg>,
   hcsr04: <svg viewBox="0 0 32 32"><rect x="2" y="9" width="28" height="14" rx="2" fill="#103a63" /><circle cx="10" cy="16" r="5" fill="#c9ced6" /><circle cx="22" cy="16" r="5" fill="#c9ced6" /><circle cx="10" cy="16" r="3" fill="#222" /><circle cx="22" cy="16" r="3" fill="#222" /></svg>,
   psu: <svg viewBox="0 0 32 32"><rect x="4" y="9" width="24" height="14" rx="2" fill="#1b1d22" /><rect x="7" y="12" width="4" height="8" rx="2" fill="#36a852" /><rect x="13" y="12" width="4" height="8" rx="2" fill="#36a852" /><rect x="19" y="12" width="4" height="8" rx="2" fill="#36a852" /></svg>,
+  propCw: <svg viewBox="0 0 32 32"><ellipse cx="16" cy="9" rx="3.5" ry="8" fill="#cbd5e1" transform="rotate(25 16 16)" /><ellipse cx="16" cy="23" rx="3.5" ry="8" fill="#cbd5e1" transform="rotate(25 16 16)" /><circle cx="16" cy="16" r="3" fill="#64748b" /></svg>,
+  propCcw: <svg viewBox="0 0 32 32"><ellipse cx="16" cy="9" rx="3.5" ry="8" fill="#fb923c" transform="rotate(-25 16 16)" /><ellipse cx="16" cy="23" rx="3.5" ry="8" fill="#fb923c" transform="rotate(-25 16 16)" /><circle cx="16" cy="16" r="3" fill="#9a3412" /></svg>,
+  lipo: <svg viewBox="0 0 32 32"><rect x="4" y="9" width="20" height="14" rx="2" fill="#d4d8de" /><path d="M24 13h5M24 19h5" stroke="#e0362c" strokeWidth="2" /><path d="M24 19h5" stroke="#1e293b" strokeWidth="2" /><text x="14" y="19" fontSize="7" textAnchor="middle" fill="#1e293b">1S</text></svg>,
 };
 
-type LibItem = { key: string; type: CompType; label: string; props?: { ohms?: number } };
+type LibItem = { key: string; type: CompType; label: string; props?: { ohms?: number; dir?: 'cw' | 'ccw' } };
 const LIB_ITEMS: LibItem[] = LIB_ORDER.flatMap((t): LibItem[] =>
   t === 'resistor'
     ? [{ key: 'r220', type: t, label: '電阻 220Ω', props: { ohms: 220 } }, { key: 'r10k', type: t, label: '電阻 10kΩ', props: { ohms: 10000 } }]
-    : [{ key: t, type: t, label: CATALOG[t].short }],
+    : t === 'prop'
+      ? [{ key: 'propCw', type: t, label: 'CW 槳', props: { dir: 'cw' } }, { key: 'propCcw', type: t, label: 'CCW 槳', props: { dir: 'ccw' } }]
+      : [{ key: t, type: t, label: CATALOG[t].short }],
 );
 
 function useSimulation(onObsRef: React.MutableRefObject<ReturnType<typeof freshObserved>>) {
@@ -210,6 +217,8 @@ export function Bench() {
   const hasPot = st.comps.filter((c) => c.type === 'pot');
   const hasBtn = st.comps.filter((c) => c.type === 'button');
   const hasSonar = st.comps.some((c) => c.type === 'hcsr04');
+  // 無人機的程式（名稱結尾 -rc）顯示遙控器；網頁程式（-wifi）顯示手機
+  const isRc = st.board === 'stampfly' && /-rc$/.test(program.id);
 
   const fullscreen = () => {
     const el = stageRef.current;
@@ -320,9 +329,10 @@ export function Bench() {
             ))}
           </div>
 
-          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id)) && (
+          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id) || isRc) && (
             <div className="panel controls-float">
               {/-wifi$/.test(program.id) && <WebPhone running={st.running} />}
+              {isRc && <DroneRemote running={st.running} />}
               {hasPot.map((p, i) => (
                 <label key={p.id}>
                   <span className="row"><span>旋鈕{hasPot.length > 1 ? ` #${i + 1}` : ''}</span><span className="mono">{Math.round((st.pot[p.id] ?? 0.5) * 100)}%</span></span>
@@ -370,7 +380,7 @@ export function Bench() {
         </div>
 
         <div className="lib" role="toolbar" aria-label="元件庫">
-          {LIB_ITEMS.map((it) => {
+          {LIB_ITEMS.filter((it) => st.board === 'stampfly' || !DRONE_ONLY.has(it.type)).map((it) => {
             const allowed = st.missionId === 'free' || (mission?.lib.includes(it.type) ?? false);
             return (
               <button key={it.key} onClick={() => st.addComp(it.type, it.props)} disabled={st.running} style={{ opacity: allowed ? 1 : 0.45 }} title={CATALOG[it.type].desc}>

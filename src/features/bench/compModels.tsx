@@ -5,6 +5,7 @@ import { CATALOG } from '../../sim/catalog';
 import type { Comp } from '../../sim/types';
 import { simVisual } from '../../sim/engine';
 import { Box, Cyl, MAT } from '../../three/parts/primitives';
+import { LipoBody, PropBody } from './DroneBench';
 
 export const PIN_TOP = 0.34;
 
@@ -16,7 +17,7 @@ function useModuleTexture(c: Comp) {
     cv.width = Math.round(spec.w * ppu);
     cv.height = Math.round(spec.d * ppu);
     const g = cv.getContext('2d')!;
-    g.fillStyle = c.type === 'hcsr04' || c.type === 'pot' ? '#103a63' : c.type === 'psu' ? '#1b1d22' : '#0f2a35';
+    g.fillStyle = c.type === 'hcsr04' || c.type === 'pot' ? '#103a63' : c.type === 'psu' || c.type === 'lipo' ? '#1b1d22' : '#0f2a35';
     g.fillRect(0, 0, cv.width, cv.height);
     g.strokeStyle = 'rgba(255,255,255,.18)';
     g.lineWidth = 4;
@@ -28,7 +29,7 @@ function useModuleTexture(c: Comp) {
     for (const p of spec.pins) {
       g.fillText(p.label, (p.dx + spec.w / 2) * ppu, (p.dz + spec.d / 2 - 0.26) * ppu);
     }
-    const title = c.type === 'resistor' ? `${(c.props.ohms ?? 220) >= 1000 ? `${(c.props.ohms ?? 220) / 1000}kΩ` : `${c.props.ohms ?? 220}Ω`}` : spec.short;
+    const title = c.type === 'prop' ? `${spec.short} ${(c.props.dir ?? 'cw').toUpperCase()}` : c.type === 'resistor' ? `${(c.props.ohms ?? 220) >= 1000 ? `${(c.props.ohms ?? 220) / 1000}kΩ` : `${c.props.ohms ?? 220}Ω`}` : spec.short;
     g.font = `700 ${Math.round(ppu * 0.14)}px "Noto Sans TC", sans-serif`;
     g.fillStyle = 'rgba(235,245,250,.6)';
     g.textAlign = 'left';
@@ -37,7 +38,7 @@ function useModuleTexture(c: Comp) {
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
     return t;
-  }, [c.type, c.props.ohms, spec]);
+  }, [c.type, c.props.ohms, c.props.dir, spec]);
 }
 
 /** 模組底板＋本體（不含接線端子） */
@@ -64,6 +65,8 @@ export function CompBody({ c }: { c: Comp }) {
         {c.type === 'servo' && <ServoBody c={c} />}
         {c.type === 'hcsr04' && <SonarBody c={c} />}
         {c.type === 'psu' && <PsuBody />}
+        {c.type === 'prop' && <PropBody c={c} />}
+        {c.type === 'lipo' && <LipoBody />}
       </group>
     </group>
   );

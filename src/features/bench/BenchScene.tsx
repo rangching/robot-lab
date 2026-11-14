@@ -14,6 +14,7 @@ import { MCU, simBoard } from '../../sim/board';
 import { useBoard } from '../../lib/useBoard';
 import { CompBody, PIN_TOP } from './compModels';
 import { IconTrash } from '../../lib/icons';
+import { DroneProps, isPropMount } from './DroneBench';
 
 export function epPos(e: Endpoint, comps: Comp[]): THREE.Vector3 | null {
   const [o, p] = splitEp(e);
@@ -22,7 +23,9 @@ export function epPos(e: Endpoint, comps: Comp[]): THREE.Vector3 | null {
     const pin = b.pins.find((x) => x.id === p);
     if (!pin) return null;
     const [x, y, z] = b.bench.pin(pin);
-    return new THREE.Vector3(b.bench.pos[0] + x, b.bench.pos[1] + y, b.bench.pos[2] + z);
+    // 會飛的板子：端點跟著機身的高度與姿態移動
+    const rel = boardVisual(b.id).benchXform?.(new THREE.Vector3(x, y, z)) ?? new THREE.Vector3(x, y, z);
+    return rel.add(new THREE.Vector3(...b.bench.pos));
   }
   const c = comps.find((x) => x.id === o);
   if (!c) return null;
@@ -41,7 +44,9 @@ function epLabel(e: Endpoint, comps: Comp[]) {
   if (!c) return { title: e, sub: '' };
   const spec = CATALOG[c.type];
   const sp = spec.pins.find((x) => x.id === p);
-  const extra: Record<string, string> = { A: '長腳（陽極）', K: '短腳（陰極）', W: '中間腳（滑臂）', V: '紅線', SIG: '橘線（訊號）' };
+  const extra: Record<string, string> = { A: '長腳（陽極）', K: '短腳（陰極）', W: '中間腳（滑臂）', V: '紅線', SIG: '橘線（訊號）', HUB: '接到馬達軸＝把槳裝上去' };
+  if (c.type === 'lipo') return { title: `${spec.name} ${sp?.label ?? p}`, sub: p === 'P' ? '紅線：接 BAT+' : '黑線：接 BAT−' };
+  if (c.type === 'prop') return { title: `${(c.props.dir ?? 'cw').toUpperCase()} 螺旋槳`, sub: c.props.dir === 'ccw' ? '逆時針槳：裝在右前（FR）、左後（RL）' : '順時針槳：裝在左前（FL）、右後（RR）' };
   return { title: `${spec.name} ${sp?.label ?? p}`, sub: (c.type === 'servo' && p === 'GND' ? '棕線' : extra[p]) ?? spec.desc };
 }
 
@@ -138,12 +143,14 @@ function BenchBoard({ children, pinVisual, onPinOver, onPinClick }: { children?:
     }
   });
   const board = useBoard();
-  const Extras = boardVisual(board.id).BenchExtras;
+  const vis = boardVisual(board.id);
+  const Extras = vis.BenchExtras;
+  const Fly = vis.BenchFly ?? StaticLift;
   const { pos, lift, pin } = board.bench;
   return (
     <group position={pos}>
       {Extras && <Extras />}
-      <group position={[0, lift, 0]}>
+      <Fly lift={lift}>
         <BoardModel
           board={board.id}
           lights={lights}
@@ -158,9 +165,26 @@ function BenchBoard({ children, pinVisual, onPinOver, onPinClick }: { children?:
         >
           {children}
         </BoardModel>
-      </group>
+      </Fly>
     </group>
   );
+}
+
+function StaticLift({ lift, children }: { lift: number; children: React.ReactNode }) {
+  return <group position={[0, lift, 0]}>{children}</group>;
+}
+
+/** 無人機飛行時，每 66 毫秒重畫一次接線，讓線跟著機身移動 */
+function useFlyTick() {
+  const running = useBench((s) => s.running);
+  const board = useBoard();
+  const [, setN] = useState(0);
+  const fly = running && !!boardVisual(board.id).benchXform;
+  useEffect(() => {
+    if (!fly) return;
+    const t = setInterval(() => setN((n) => n + 1), 66);
+    return () => { clearInterval(t); setN((n) => n + 1); };
+  }, [fly]);
 }
 
 /** 開發模式：讓自動化測試能把 3D 座標換算成螢幕座標 */
@@ -188,6 +212,8 @@ export function BenchScene() {
   const { comps, wires, pending, selected, running, issues, clickPin, removeWire, select, moveComp, removeComp, setPressed } = useBench();
   const [hoverEp, setHoverEp] = useState<Endpoint | null>(null);
   const [drag, setDrag] = useState<{ id: string; dx: number; dz: number; moved: boolean } | null>(null);
+  const board = useBoard();
+  useFlyTick();
 
   const errEps = useMemo(() => new Set(issues.filter((i) => i.level === 'error').flatMap((i) => i.endpoints)), [issues]);
   const warnEps = useMemo(() => new Set(issues.filter((i) => i.level === 'warn').flatMap((i) => i.endpoints)), [issues]);
@@ -212,7 +238,9 @@ export function BenchScene() {
         pinVisual={pinVisual}
         onPinOver={(p) => setHoverEp(p ? `${MCU}:${p.id}` : null)}
         onPinClick={(p) => clickPin(`${MCU}:${p.id}`)}
-      />
+      >
+        {board.id === 'stampfly' && <DroneProps />}
+      </BenchBoard>
 
       {comps.map((c) => {
         const spec = CATALOG[c.type];
@@ -263,6 +291,8 @@ export function BenchScene() {
       })}
 
       {wires.map((w) => {
+        // 螺旋槳套上馬達軸：直接畫在馬達上，不畫線
+        if (isPropMount(w, comps)) return null;
         const a = epPos(w.a, comps);
         const b = epPos(w.b, comps);
         if (!a || !b) return null;
