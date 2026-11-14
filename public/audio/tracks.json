@@ -1,0 +1,29 @@
+[
+  {
+    "id": "focus",
+    "title": "專注模式",
+    "subtitle": "Lo-fi · 78 BPM",
+    "file": "audio/focus.mp3",
+    "bpm": 78,
+    "duration": 196.92,
+    "loop": true
+  },
+  {
+    "id": "debug",
+    "title": "深度除錯",
+    "subtitle": "Ambient · 76 BPM",
+    "file": "audio/debug.mp3",
+    "bpm": 76,
+    "duration": 202.11,
+    "loop": true
+  },
+  {
+    "id": "sprint",
+    "title": "衝刺建構",
+    "subtitle": "Synthwave · 100 BPM",
+    "file": "audio/sprint.mp3",
+    "bpm": 100,
+    "duration": 192,
+    "loop": true
+  }
+]

@@ -1,0 +1,87 @@
+import { Stage } from '../viewer/Stage';
+import { BOARDS } from '../../data/boards';
+import { useProgress, useUi } from '../progress/store';
+import { completion, nextAction } from '../progress/completion';
+import { go } from './nav';
+import { IconLock, IconChevron } from '../../lib/icons';
+import { scrollToId } from '../../lib/labStore';
+
+function Ring({ pct }: { pct: number }) {
+  const r = 36;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="ring" aria-label={`完成度 ${Math.round(pct * 100)}%`}>
+      <svg width="84" height="84" viewBox="0 0 84 84">
+        <circle cx="42" cy="42" r={r} stroke="#e6edf5" strokeWidth="7" fill="none" />
+        <circle cx="42" cy="42" r={r} stroke="url(#rg)" strokeWidth="7" fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .8s' }} />
+        <defs>
+          <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#0ea5e9" /><stop offset="1" stopColor="#22c55e" /></linearGradient>
+        </defs>
+      </svg>
+      <b>{Math.round(pct * 100)}%</b>
+    </div>
+  );
+}
+
+export function Hero() {
+  const p = useProgress();
+  const comp = completion(p);
+  const next = nextAction(p);
+  const uno = BOARDS[0];
+  const pushToast = useUi((s) => s.pushToast);
+  const row = (label: string, v: number, extra?: string) => (
+    <div><span>{label}</span><span className={v >= 1 ? 'ok' : ''}>{extra ?? `${Math.round(v * 100)}%`}</span></div>
+  );
+  return (
+    <section className="hero" id="uno">
+      <div className="container">
+        <div className="hero-grid">
+          <div className="panel hero-info">
+            <div className="hero-meta"><span>ARDUINO · {uno.year}</span><span>01 / 08</span></div>
+            <div>
+              <span className="kicker">做機器人一定會碰到的 8 塊開發板</span>
+              <h1>{uno.name}</h1>
+              <p className="tagline">{uno.tagline}</p>
+            </div>
+            <div className="hero-chips">
+              <span className="chip green">{uno.level}</span>
+              <span className="chip">{uno.mcu}</span>
+              <span className="chip">{uno.logic} 邏輯</span>
+              <span className="chip">{uno.clock}</span>
+            </div>
+            <div className="ring-row">
+              <Ring pct={comp.pct} />
+              <div className="ring-list">
+                {row('工作台任務', comp.missions, `${comp.doneSteps}/${comp.totalSteps} 步`)}
+                {row('課程', comp.lesson)}
+                {row('找零件測驗', comp.quiz, `${p.quizBest}/6`)}
+                {row('拆裝組裝', comp.asm, p.assemblyDone ? '完成' : '未完成')}
+              </div>
+            </div>
+            <div className="next-card">
+              <span className="kicker">下一步</span>
+              <p>{next.text}</p>
+              <button className="btn primary sm" onClick={() => go(next.target, next.mission)}>{next.cta} <IconChevron size={14} /></button>
+            </div>
+          </div>
+          <Stage />
+        </div>
+        <div className="board-strip" role="list" aria-label="8 塊開發板">
+          {BOARDS.map((b) => (
+            <button
+              key={b.id}
+              role="listitem"
+              className={`board-card ${b.id === 'uno' ? 'on' : ''} ${b.locked ? 'locked' : ''}`}
+              onClick={() => (b.locked ? pushToast({ text: `${b.name}：完成 Uno 後的下一階段開放`, kind: 'info' }) : scrollToId('uno'))}
+              title={b.tagline}
+            >
+              <span className="n">{String(b.num).padStart(2, '0')} · {b.level}</span>
+              <span className="t">{b.name}</span>
+              {b.locked && <span className="lock"><IconLock size={13} /></span>}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
