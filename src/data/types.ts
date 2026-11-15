@@ -32,7 +32,7 @@ export interface QuizQ {
   explain: string;
 }
 
-export type BoardId = 'uno' | 'nano' | 'mega' | 'esp32' | 'nodemcu' | 'pico' | 'bluepill' | 'rpi4' | 'stampfly' | 'jetson' | 'threepi';
+export type BoardId = 'uno' | 'nano' | 'mega' | 'esp32' | 'nodemcu' | 'pico' | 'bluepill' | 'rpi4' | 'stampfly' | 'jetson' | 'microbit' | 'threepi';
 
 export interface BoardSummary {
   id: BoardId;

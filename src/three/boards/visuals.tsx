@@ -11,6 +11,7 @@ import { nodemcuVisual } from './nodemcuVisual';
 import { stampflyVisual } from './stampflyVisual';
 import { jetsonVisual } from './jetsonVisual';
 import { threepiVisual } from './threepiVisual';
+import { microbitVisual } from './microbitVisual';
 
 export type { BoardVisual, Lights } from './visualTypes';
 
@@ -26,6 +27,7 @@ export const BOARD_VISUALS: Partial<Record<BoardId, BoardVisual>> = {
   stampfly: stampflyVisual,
   jetson: jetsonVisual,
   threepi: threepiVisual,
+  microbit: microbitVisual,
 };
 
 export const boardVisual = (id: BoardId): BoardVisual => BOARD_VISUALS[id] ?? unoVisual;

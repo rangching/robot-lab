@@ -10,6 +10,7 @@ import { nodemcuData } from './nodemcu';
 import { stampflyData } from './stampfly';
 import { jetsonData } from './jetson';
 import { threepiData } from './threepi';
+import { microbitData } from './microbit';
 import { NANO_PINS, NANO_INTERNAL_NETS, NANO_FOOTPRINTS, NANO_W, NANO_D, nanoLesson, nx, nz } from './nano';
 
 /** [相機 x, y, z, 目標 x, y, z] */
@@ -191,6 +192,7 @@ export const BOARD_DATA: Partial<Record<BoardId, BoardData>> = {
   stampfly: stampflyData,
   jetson: jetsonData,
   threepi: threepiData,
+  microbit: microbitData,
 };
 
 export const explodeGap = (b: BoardData) => b.stage.explodeGap ?? 0.9;

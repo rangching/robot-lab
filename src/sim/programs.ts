@@ -14,6 +14,7 @@ import { PICO_FREE_PROGRAMS } from './programsPico';
 import { NODEMCU_FREE_PROGRAMS } from './programsNodemcu';
 import { JETSON_FREE_PROGRAMS } from './programsJetson';
 import { THREEPI_FREE_PROGRAMS } from './programsThreepi';
+import { MICROBIT_FREE_PROGRAMS } from './programsMicrobit';
 
 export type PinMode = 'INPUT' | 'INPUT_PULLUP' | 'OUTPUT';
 
@@ -386,6 +387,7 @@ export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
   stampfly: STAMPFLY_FREE_PROGRAMS,
   jetson: JETSON_FREE_PROGRAMS,
   threepi: THREEPI_FREE_PROGRAMS,
+  microbit: MICROBIT_FREE_PROGRAMS,
 };
 export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 

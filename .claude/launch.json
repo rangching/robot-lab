@@ -119,6 +119,17 @@
         "--strictPort"
       ],
       "port": 6299
+    },
+    {
+      "name": "robot-lab-microbit",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "6199",
+        "--strictPort"
+      ],
+      "port": 6199
     }
   ]
 }

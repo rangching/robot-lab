@@ -74,5 +74,12 @@ export const BADGES: BadgeDef[] = [
   { id: 'tp-bump', name: '撞了就閃', desc: '用左右碰撞感測器在障礙場自己逛', xp: 30, color: '#ff5c7a', glyph: 'shield' },
   { id: 'tp-line', name: '循線新手', desc: '校正 5 顆循線感測器，用 P 控制跑完一圈', xp: 40, color: '#7cff6b', glyph: 'eye' },
   { id: 'tp-pid', name: 'PD 循線手', desc: '加上微分項，高速過彎不脫軌', xp: 50, color: '#ff9f43', glyph: 'flame' },
+  // micro:bit V2（入門教育板）
+  { id: 'mb-hello', name: 'micro:bit 報到', desc: '捲動文字，用按鈕和觸控 logo 換表情', xp: 30, color: '#ff4d4d', glyph: 'spark' },
+  { id: 'mb-tilt', name: '傾斜大師', desc: '用加速度計做水平儀，搖一搖擲骰子', xp: 30, color: '#22e3ff', glyph: 'wave' },
+  { id: 'mb-clip', name: '鱷魚夾接線', desc: '不用麵包板，夾在大圓環 P0 點亮外部 LED', xp: 30, color: '#ffc24b', glyph: 'bulb' },
+  { id: 'mb-sound', name: '拍手開燈', desc: '用麥克風抓拍手，調好門檻不誤觸發', xp: 40, color: '#a78bfa', glyph: 'flame' },
+  { id: 'mb-radio', name: '無線電猜拳', desc: '設對群組，和朋友的 micro:bit 猜拳三回合', xp: 40, color: '#7cff6b', glyph: 'eye' },
+  { id: 'microbit-master', name: 'micro:bit 全制霸', desc: 'BBC micro:bit V2 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
   { id: 'threepi-master', name: '3pi+ 全制霸', desc: 'Pololu 3pi+ 2040 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
 ];

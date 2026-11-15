@@ -42,7 +42,7 @@ export function Hero() {
           <div className="panel hero-info">
             <div className="hero-meta"><span>{uno.maker.toUpperCase()} · {uno.year}</span><span>{String(uno.num).padStart(2, '0')} / {String(BOARDS.length).padStart(2, '0')}</span></div>
             <div>
-              <span className="kicker">做機器人一定會碰到的 10 塊開發板</span>
+              <span className="kicker">做機器人一定會碰到的 {BOARDS.length} 塊開發板</span>
               <h1>{uno.name}</h1>
               <p className="tagline">{uno.tagline}</p>
             </div>
@@ -69,7 +69,7 @@ export function Hero() {
           </div>
           <Stage />
         </div>
-        <div className="board-strip" role="list" aria-label="10 塊開發板">
+        <div className="board-strip" role="list" aria-label={`${BOARDS.length} 塊開發板`}>
           {BOARDS.map((b) => {
             const lock = b.locked || !isPlayable(b.id);
             const pct = lock ? 0 : completion(p, b.id).pct;
