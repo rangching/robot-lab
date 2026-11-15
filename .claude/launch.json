@@ -108,6 +108,17 @@
         "--strictPort"
       ],
       "port": 6099
+    },
+    {
+      "name": "robot-lab-threepi",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "6299",
+        "--strictPort"
+      ],
+      "port": 6299
     }
   ]
 }

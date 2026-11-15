@@ -13,6 +13,7 @@ import { freePrograms, parseCode } from '../../sim/programs';
 import { WebPhone } from './WebPhone';
 import { DroneRemote } from './DroneRemote';
 import { AiCamera } from './AiCamera';
+import { BotPanel } from './BotPanel';
 import { DRONE_ONLY } from '../../sim/drone';
 import type { CompType } from '../../sim/types';
 import { useProgress } from '../progress/store';
@@ -332,11 +333,12 @@ export function Bench() {
             ))}
           </div>
 
-          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id) || isRc || isAi) && (
+          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id) || isRc || isAi || st.board === 'threepi') && (
             <div className="panel controls-float">
               {/-wifi$/.test(program.id) && <WebPhone running={st.running} />}
               {isRc && <DroneRemote running={st.running} />}
               {isAi && <AiCamera running={st.running} />}
+              {st.board === 'threepi' && <BotPanel running={st.running} programId={program.id} />}
               {hasPot.map((p, i) => (
                 <label key={p.id}>
                   <span className="row"><span>旋鈕{hasPot.length > 1 ? ` #${i + 1}` : ''}</span><span className="mono">{Math.round((st.pot[p.id] ?? 0.5) * 100)}%</span></span>

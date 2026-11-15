@@ -13,6 +13,7 @@ import { RPI4_FREE_PROGRAMS } from './programsRpi4';
 import { PICO_FREE_PROGRAMS } from './programsPico';
 import { NODEMCU_FREE_PROGRAMS } from './programsNodemcu';
 import { JETSON_FREE_PROGRAMS } from './programsJetson';
+import { THREEPI_FREE_PROGRAMS } from './programsThreepi';
 
 export type PinMode = 'INPUT' | 'INPUT_PULLUP' | 'OUTPUT';
 
@@ -384,6 +385,7 @@ export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
   nodemcu: NODEMCU_FREE_PROGRAMS,
   stampfly: STAMPFLY_FREE_PROGRAMS,
   jetson: JETSON_FREE_PROGRAMS,
+  threepi: THREEPI_FREE_PROGRAMS,
 };
 export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 

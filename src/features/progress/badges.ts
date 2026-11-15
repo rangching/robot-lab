@@ -67,4 +67,12 @@ export const BADGES: BadgeDef[] = [
   { id: 'jetson-ai', name: '看得見的大腦', desc: '用 GPU 物件偵測認出人來亮燈，再切到 MAXN SUPER', xp: 40, color: '#76b900', glyph: 'eye' },
   { id: 'jetson-track', name: 'AI 雲台', desc: '伺服機接硬體 PWM、獨立供電，跟著畫面裡的人轉', xp: 40, color: '#ff9f43', glyph: 'spark' },
   { id: 'jetson-master', name: 'Jetson 全制霸', desc: 'Jetson Orin Nano Super 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
+  // 3pi+ 2040（地面機器人）
+  { id: 'tp-drive', name: '3pi+ 出發', desc: '用 set_speeds 讓自走車前進再倒車', xp: 30, color: '#22e3ff', glyph: 'spark' },
+  { id: 'tp-turn', name: '原地 90°', desc: '用時間控制轉彎，並發現它有多不準', xp: 30, color: '#ffc24b', glyph: 'knob' },
+  { id: 'tp-odo', name: '編碼器量尺', desc: '靠編碼器計數停在指定距離，誤差 2 cm 內', xp: 30, color: '#a78bfa', glyph: 'wave' },
+  { id: 'tp-bump', name: '撞了就閃', desc: '用左右碰撞感測器在障礙場自己逛', xp: 30, color: '#ff5c7a', glyph: 'shield' },
+  { id: 'tp-line', name: '循線新手', desc: '校正 5 顆循線感測器，用 P 控制跑完一圈', xp: 40, color: '#7cff6b', glyph: 'eye' },
+  { id: 'tp-pid', name: 'PD 循線手', desc: '加上微分項，高速過彎不脫軌', xp: 50, color: '#ff9f43', glyph: 'flame' },
+  { id: 'threepi-master', name: '3pi+ 全制霸', desc: 'Pololu 3pi+ 2040 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
 ];

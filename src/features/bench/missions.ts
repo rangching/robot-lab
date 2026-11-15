@@ -12,6 +12,7 @@ import { PICO_MISSIONS } from './missionsPico';
 import { NODEMCU_MISSIONS } from './missionsNodemcu';
 import { STAMPFLY_MISSIONS } from './missionsStampfly';
 import { JETSON_MISSIONS } from './missionsJetson';
+import { THREEPI_MISSIONS } from './missionsThreepi';
 
 export interface Ctx {
   comps: Comp[];
@@ -188,6 +189,7 @@ export const MISSIONS_BY_BOARD: Partial<Record<BoardId, Mission[]>> = {
   nodemcu: NODEMCU_MISSIONS,
   stampfly: STAMPFLY_MISSIONS,
   jetson: JETSON_MISSIONS,
+  threepi: THREEPI_MISSIONS,
 };
 export const missionsFor = (b: BoardId): Mission[] => MISSIONS_BY_BOARD[b] ?? [];
 export const MISSIONS: Mission[] = Object.values(MISSIONS_BY_BOARD).flat() as Mission[];
