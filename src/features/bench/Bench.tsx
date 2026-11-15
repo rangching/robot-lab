@@ -12,6 +12,7 @@ import { buildNets } from '../../sim/netlist';
 import { freePrograms, parseCode } from '../../sim/programs';
 import { WebPhone } from './WebPhone';
 import { DroneRemote } from './DroneRemote';
+import { AiCamera } from './AiCamera';
 import { DRONE_ONLY } from '../../sim/drone';
 import type { CompType } from '../../sim/types';
 import { useProgress } from '../progress/store';
@@ -219,6 +220,8 @@ export function Bench() {
   const hasSonar = st.comps.some((c) => c.type === 'hcsr04');
   // 無人機的程式（名稱結尾 -rc）顯示遙控器；網頁程式（-wifi）顯示手機
   const isRc = st.board === 'stampfly' && /-rc$/.test(program.id);
+  // Jetson 的 AI 程式（名稱結尾 -ai）顯示相機畫面
+  const isAi = /-ai$/.test(program.id);
 
   const fullscreen = () => {
     const el = stageRef.current;
@@ -329,10 +332,11 @@ export function Bench() {
             ))}
           </div>
 
-          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id) || isRc) && (
+          {(hasPot.length > 0 || hasBtn.length > 0 || hasSonar || /-wifi$/.test(program.id) || isRc || isAi) && (
             <div className="panel controls-float">
               {/-wifi$/.test(program.id) && <WebPhone running={st.running} />}
               {isRc && <DroneRemote running={st.running} />}
+              {isAi && <AiCamera running={st.running} />}
               {hasPot.map((p, i) => (
                 <label key={p.id}>
                   <span className="row"><span>旋鈕{hasPot.length > 1 ? ` #${i + 1}` : ''}</span><span className="mono">{Math.round((st.pot[p.id] ?? 0.5) * 100)}%</span></span>
@@ -396,7 +400,7 @@ export function Bench() {
         <div className="panel code-run code-box">
           <header>
             <span>{program.title}</span>
-            <span>ARDUINO C++</span>
+            <span>{/^\s*(from|import)\s/m.test(program.code) ? 'PYTHON' : 'ARDUINO C++'}</span>
           </header>
           <pre aria-label="程式碼">
             {parsed.lines.map((ln, i) => {

@@ -62,4 +62,9 @@ export const BADGES: BadgeDef[] = [
   { id: 'sf-grove', name: '起飛警示燈', desc: '從 Grove PORT.B 外掛一顆解鎖警示燈', xp: 30, color: '#22e3ff', glyph: 'wave' },
   { id: 'stampfly-master', name: 'Stamp Fly 全制霸', desc: 'M5Stamp Fly 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
   { id: 'bluepill-master', name: 'Blue Pill 全制霸', desc: 'Blue Pill 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
+  { id: 'jetson-hello', name: 'Jetson 報到', desc: '用 Jetson.GPIO 的 BOARD 模式讓第 12 腳的 LED 閃起來', xp: 30, color: '#7cff6b', glyph: 'bulb' },
+  { id: 'jetson-button', name: '自己上拉', desc: '外加 10kΩ 上拉電阻，讓第 18 腳的按鈕控制 LED', xp: 30, color: '#22e3ff', glyph: 'button' },
+  { id: 'jetson-ai', name: '看得見的大腦', desc: '用 GPU 物件偵測認出人來亮燈，再切到 MAXN SUPER', xp: 40, color: '#76b900', glyph: 'eye' },
+  { id: 'jetson-track', name: 'AI 雲台', desc: '伺服機接硬體 PWM、獨立供電，跟著畫面裡的人轉', xp: 40, color: '#ff9f43', glyph: 'spark' },
+  { id: 'jetson-master', name: 'Jetson 全制霸', desc: 'Jetson Orin Nano Super 完成度達到 100%', xp: 80, color: '#7cff6b', glyph: 'crown' },
 ];

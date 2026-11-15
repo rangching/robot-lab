@@ -11,6 +11,7 @@ import { RPI4_MISSIONS } from './missionsRpi4';
 import { PICO_MISSIONS } from './missionsPico';
 import { NODEMCU_MISSIONS } from './missionsNodemcu';
 import { STAMPFLY_MISSIONS } from './missionsStampfly';
+import { JETSON_MISSIONS } from './missionsJetson';
 
 export interface Ctx {
   comps: Comp[];
@@ -186,6 +187,7 @@ export const MISSIONS_BY_BOARD: Partial<Record<BoardId, Mission[]>> = {
   pico: PICO_MISSIONS,
   nodemcu: NODEMCU_MISSIONS,
   stampfly: STAMPFLY_MISSIONS,
+  jetson: JETSON_MISSIONS,
 };
 export const missionsFor = (b: BoardId): Mission[] => MISSIONS_BY_BOARD[b] ?? [];
 export const MISSIONS: Mission[] = Object.values(MISSIONS_BY_BOARD).flat() as Mission[];

@@ -16,4 +16,4 @@ export const mcuEp = (pin: string): Endpoint => ep(MCU, pin);
 export const supplyEps = () => cur.supply.map(mcuEp);
 export const gndEps = () => cur.gnd.map(mcuEp);
 /** 數位／類比腳（可以被程式讀寫的腳） */
-export const IO_PIN = /^(D\d+|A\d+|GP\d+|P[A-C]\d+|GPIO\d+)$/;
+export const IO_PIN = /^(D\d+|A\d+|GP\d+|P[A-C]\d+|GPIO\d+|PIN\d+)$/;

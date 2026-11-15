@@ -15,7 +15,7 @@ export function Compare() {
         <div className="section-head">
           <div>
             <span className="section-num"><b>04</b>比較</span>
-            <h2>9 塊板子並排比一比</h2>
+            <h2>10 塊板子並排比一比</h2>
             <p>決定一個專題該用哪塊板子，看的就是這幾個數字。目前開放 {open.join('、')}，其他板子陸續推出；點開放的板子可以直接切換。</p>
           </div>
         </div>

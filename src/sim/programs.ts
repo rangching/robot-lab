@@ -12,6 +12,7 @@ import { BLUEPILL_FREE_PROGRAMS } from './programsBluepill';
 import { RPI4_FREE_PROGRAMS } from './programsRpi4';
 import { PICO_FREE_PROGRAMS } from './programsPico';
 import { NODEMCU_FREE_PROGRAMS } from './programsNodemcu';
+import { JETSON_FREE_PROGRAMS } from './programsJetson';
 
 export type PinMode = 'INPUT' | 'INPUT_PULLUP' | 'OUTPUT';
 
@@ -382,6 +383,7 @@ export const FREE_PROGRAMS_BY_BOARD: Partial<Record<BoardId, ProgramDef[]>> = {
   pico: PICO_FREE_PROGRAMS,
   nodemcu: NODEMCU_FREE_PROGRAMS,
   stampfly: STAMPFLY_FREE_PROGRAMS,
+  jetson: JETSON_FREE_PROGRAMS,
 };
 export const freePrograms = (b: BoardId): ProgramDef[] => FREE_PROGRAMS_BY_BOARD[b] ?? FREE_PROGRAMS;
 

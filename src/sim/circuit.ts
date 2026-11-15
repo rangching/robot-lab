@@ -78,8 +78,10 @@ export class Circuit {
   }
 
   /** 端點往外經過的電阻總值（只看一層） */
-  resistanceTo(e: Endpoint, inp: SimInputs): number {
+  resistanceTo(e: Endpoint, inp: SimInputs, outs: Record<string, PinOut> = {}): number {
     const nets = this.nets(inp.pressed);
+    // 端點本身已經直接接在電源、GND 或輸出腳上：掛在這個節點上的其他電阻（例如按鈕的上拉電阻）不在 LED 的電流路徑上
+    if (this.directLevel(nets, e, outs) !== null) return 0;
     let r = 0;
     for (const m of nets.members(nets.netOf(e))) {
       const [o, p] = splitEp(m);
@@ -92,7 +94,8 @@ export class Circuit {
   }
 
   digitalRead(pin: string, outs: Record<string, PinOut>, inp: SimInputs): 0 | 1 {
-    const v = this.level(mcuEp(pin), outs, inp);
+    // viaRes：外加的上拉／下拉電阻也算（Jetson 不能用程式開內建上拉，一定要自己加）
+    const v = this.level(mcuEp(pin), outs, inp, true);
     // 沒有內建上拉的腳（ESP32 的 GPIO34–39）設 INPUT_PULLUP 也沒用，浮接時一樣亂跳
     const pullup = outs[pin]?.mode === 'INPUT_PULLUP' && !(simBoard().inputOnly ?? []).includes(pin);
     if (v === null) return pullup ? 1 : Math.random() > 0.5 ? 1 : 0;
@@ -110,7 +113,7 @@ export class Circuit {
     const k = this.level(ep(c.id, 'K'), outs, inp, true);
     if (a === null || k === null) return 0;
     const diff = Math.max(0, Math.min(1, a - k));
-    const r = Math.max(this.resistanceTo(ep(c.id, 'A'), inp), this.resistanceTo(ep(c.id, 'K'), inp));
+    const r = Math.max(this.resistanceTo(ep(c.id, 'A'), inp, outs), this.resistanceTo(ep(c.id, 'K'), inp, outs));
     const dim = r >= 4700 ? 0.12 : 1;
     return diff * dim;
   }

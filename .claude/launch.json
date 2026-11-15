@@ -97,6 +97,17 @@
         "--strictPort"
       ],
       "port": 5999
+    },
+    {
+      "name": "robot-lab-jetson",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "6099",
+        "--strictPort"
+      ],
+      "port": 6099
     }
   ]
 }
